@@ -20,5 +20,12 @@
         "typo3/cms": {
             "extension-key": "jar_utilities"
         }
-    }
+    },
+    "repositories": [
+        {
+            "type": "composer",
+            "url": "https://h17.jarmedia.de/satis/packages"
+        }
+    ]
+
 }
