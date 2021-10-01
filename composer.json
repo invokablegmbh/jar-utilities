@@ -1,0 +1,24 @@
+{
+    "name": "jar/jar_utilities",
+    "type": "typo3-cms-extension",
+    "description": "Utility classes that simplify TYPO3 development",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "JAR Media GmbH",
+            "role": "Developer",
+            "email": "info@jar.media",
+            "homepage": "https://jar.media"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Jar\\Utilities\\": "Classes/"
+        }
+    },
+    "extra": {
+        "typo3/cms": {
+            "extension-key": "jar_utilities"
+        }
+    }
+}
