@@ -1,14 +1,4 @@
 {
-    "repositories": {
-        "0": {
-            "type": "composer",
-            "url": "https://h17.jarmedia.de/satis/packages"
-        },
-        "1": {
-            "type": "composer",
-            "url": "https://composer.typo3.org/"
-        }
-    },
     "name": "jar/jar_utilities",
     "type": "typo3-cms-extension",
     "description": "Utility classes that simplify TYPO3 development",
