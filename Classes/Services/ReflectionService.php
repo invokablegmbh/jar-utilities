@@ -4,16 +4,20 @@ declare(strict_types=1);
 
 namespace Jar\Utilities\Services;
 
+use Doctrine\DBAL\DBALException;
 use InvalidArgumentException;
 use RuntimeException;
 use ReflectionException;
 use Jar\Utilities\Utilities\FileUtility;
 use Jar\Utilities\Utilities\FormatUtility;
+use Jar\Utilities\Utilities\FrontendUtility;
 use Jar\Utilities\Utilities\IteratorUtility;
 use Jar\Utilities\Utilities\TcaUtility;
 use Jar\Utilities\Utilities\WildcardUtility;
 use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Database\Query\Expression\CompositeExpression;
+use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 use TYPO3\CMS\Core\Database\RelationHandler;
 use TYPO3\CMS\Core\Utility\ArrayUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -81,6 +85,17 @@ class ReflectionService
 	 */
 	private array $tableColumnRemoveablePrefixes = [];
 
+	/**
+	 * Array for used TCA field definitions, helpful for Post-handling that prepared data
+	 * @var array
+	 */
+	private array $tcaFieldDefinition = [];
+
+	/**
+	 * Flag for Debug Mode
+	 * @var bool
+	 */
+	private bool $debug = false;
 
 	/**
 	 * Remap Columnnames in reflected result
@@ -112,6 +127,10 @@ class ReflectionService
 	 */
 	public function &buildArrayByRow(array $row, string $table, int $maxDepth = 8): ?array
 	{
+		if ($this->debug) {
+			DebuggerUtility::var_dump($row, 'Reflection Service buildArrayByRow IN ' . $table);
+		}
+
 		if ($maxDepth <= 0) {
 			return null;
 		}
@@ -134,6 +153,8 @@ class ReflectionService
 		$removeablePrefixes = $this->tableColumnRemoveablePrefixes[$table] ?? [];
 		$columnRemapping = $this->tableColumnRemapping[$table] ?? [];
 
+		$tcaType = TcaUtility::getTypeFromRow($table, $row);
+
 		// load TCA Config for each column and proccess
 		foreach ($tcaColumns as $tcaColumn) {
 			// just process whitelist columns (if set)
@@ -146,7 +167,8 @@ class ReflectionService
 				continue;
 			}
 
-			$config = TcaUtility::getFieldConfig($table, $tcaColumn, $row['CType']);
+			$tcaDefinition = TcaUtility::getFieldDefinition($table, $tcaColumn, $tcaType);
+			$config = $tcaDefinition['config'];
 
 			// final key name in result list				
 			if (empty($removeablePrefixes)) {
@@ -157,6 +179,12 @@ class ReflectionService
 			if (!empty($columnRemapping) && key_exists($targetKey, $columnRemapping)) {
 				$targetKey = $columnRemapping[$targetKey];
 			}
+
+			// Store the TCA informations for post handling
+			if (!key_exists($table, $this->tcaFieldDefinition)) {
+				$this->tcaFieldDefinition[$table] = [];
+			}
+			$this->tcaFieldDefinition[$table][$targetKey] = $tcaDefinition;
 
 			// bloody fallback when no TCA informations are found
 			if (empty($config)) {
@@ -222,7 +250,7 @@ class ReflectionService
 							($config['type'] === 'group' && $config['internal_type'] !== 'db') ||
 							($config['type'] !== 'group' && empty($config['foreign_table']))
 						) {
-							$result[$targetKey] = ((int) $config['maxitems'] > 1) ? GeneralUtility::trimExplode(',', $rawValue) : $rawValue;
+							$result[$targetKey] = ((int) $config['maxitems'] > 1) ? GeneralUtility::trimExplode(',', $rawValue, true) : $rawValue;
 							break;
 						}
 						// Load relations to other tables												
@@ -232,7 +260,7 @@ class ReflectionService
 						$resolvedItemArray = $relationHandler->getResolvedItemArray();
 
 						if (empty($resolvedItemArray)) {
-							$result[$targetKey][] = null;
+							$result[$targetKey] = [];
 							break;
 						}
 
@@ -269,10 +297,7 @@ class ReflectionService
 									->select('*')
 									->from($foreignTable)
 									->where(
-										$queryBuilder->expr()->in(
-											'uid',
-											$queryBuilder->createNamedParameter($selectUids, Connection::PARAM_INT_ARRAY)
-										)
+										$this->createLanguageContraints($queryBuilder, $selectUids, $foreignTable)
 									)
 									->execute();
 
@@ -291,7 +316,7 @@ class ReflectionService
 										->select('*')
 										->from($resolvedItem['table'])
 										->where(
-											$queryBuilder->expr()->eq('uid', $queryBuilder->createNamedParameter((int) $resolvedItem['uid'], \PDO::PARAM_INT))
+											$this->createLanguageContraints($queryBuilder, $resolvedItem['uid'], $resolvedItem['table'])
 										)
 										->execute();
 									if ($foreignRow = $queryResult->fetch()) {
@@ -317,6 +342,63 @@ class ReflectionService
 
 		$this->storeItemInStorage($table, $uid, $result);
 		return $this->elementStorage[$table][$uid];
+	}
+
+
+	/**
+	 * Helper Method for just loading elements for the matching language
+	 * @param QueryBuilder $queryBuilder 
+	 * @param string $table 
+	 * @param mixed $singleUidOrUidList 
+	 * @return null|CompositeExpression 	 
+	 */
+	private function createLanguageContraints(QueryBuilder $queryBuilder, $singleUidOrUidList, string $table)
+	{
+		$uidContstraints = [];
+		$languageConstraints = [];
+
+		if (is_array($singleUidOrUidList)) {
+			// UID List Mode
+			$uidContstraints[] = $queryBuilder->expr()->in(
+				'uid',
+				$queryBuilder->createNamedParameter($singleUidOrUidList, Connection::PARAM_INT_ARRAY)
+			);
+		} else {
+			// UID Single Mode
+			$uidContstraints[] = $queryBuilder->expr()->eq('uid', $queryBuilder->createNamedParameter((int) $singleUidOrUidList, \PDO::PARAM_INT));
+		}
+
+		$languageConfig = TcaUtility::getL10nConfig($table);
+		if ($languageConfig !== null) {
+			$languageField = $languageConfig['languageField'];
+			$languageParentField = $languageConfig['transOrigPointerField'];
+			$currentLanguageUid = FrontendUtility::getCurrentLanguageId();
+
+			// just load elements from the current language or which are marked for "all languages (-1)"
+			$languageConstraints[] = $queryBuilder->expr()->eq($languageField, $currentLanguageUid);
+			$languageConstraints[] = $queryBuilder->expr()->eq($languageField, -1);
+
+			// also load translated elements where the parent is matching
+			if (is_array($singleUidOrUidList)) {
+				// UID List Mode
+				$uidContstraints[] = $queryBuilder->expr()->in(
+					$languageParentField,
+					$queryBuilder->createNamedParameter($singleUidOrUidList, Connection::PARAM_INT_ARRAY)
+				);
+			} else {
+				// UID Single Mode
+				$uidContstraints[] = $queryBuilder->expr()->eq($languageParentField, $queryBuilder->createNamedParameter((int) $singleUidOrUidList, \PDO::PARAM_INT));
+			}
+		}
+
+		return $queryBuilder->expr()->andX(
+			$queryBuilder->expr()->orX(
+				...$uidContstraints
+			),
+			$queryBuilder->expr()->orX(
+				...$languageConstraints
+			)
+		);
 	}
 
 	/**
@@ -352,6 +434,59 @@ class ReflectionService
 	{
 		$this->createTableStorageIfNotExist($table);
 		$this->elementStorage[$table][$uid] = $item;
+	}
+
+	/**
+	 * @param array $configuration 
+	 * @return ReflectionService 
+	 */
+	public function setPropertiesByConfigurationArray(array $configuration): self
+	{
+		$tableColumnBlacklist = $this->convertProcessorConfigurationStringListToArray($configuration, 'tableColumnBlacklist');
+		if (!empty($tableColumnBlacklist)) {
+			$this->addToTableColumnBlacklist($tableColumnBlacklist);
+		}
+
+		$tableColumnWhitelist = $this->convertProcessorConfigurationStringListToArray($configuration, 'tableColumnWhitelist');
+		if (!empty($tableColumnWhitelist)) {
+			$this->setTableColumnWhitelist($tableColumnWhitelist);
+		}
+
+		$tableColumnRemoveablePrefixes = $this->convertProcessorConfigurationStringListToArray($configuration, 'tableColumnRemoveablePrefixes');
+		if (!empty($tableColumnRemoveablePrefixes)) {
+			$this->setTableColumnRemoveablePrefixes($tableColumnRemoveablePrefixes);
+		}
+
+		if (!empty($configuration['tableColumnRemapping']) && is_array($configuration['tableColumnRemapping'])) {
+			$this->setTableColumnRemapping($configuration['tableColumnRemapping']);
+		}
+
+		if (!empty($configuration['buildingConfiguration']) && is_array($configuration['buildingConfiguration'])) {
+			$this->setBuildingConfiguration($configuration['buildingConfiguration']);
+		}
+
+		if (!empty($configuration['debug'])) {
+			$this->setDebug((bool) $configuration['debug']);
+		}
+
+		return $this;
+	}
+
+	/**
+	 * @param array $processorConfiguration 
+	 * @param string $key 
+	 * @return array 
+	 */
+	private function convertProcessorConfigurationStringListToArray(array $processorConfiguration, string $key): array
+	{
+		$result = [];
+		if (!empty($processorConfiguration[$key]) && is_array($processorConfiguration[$key])) {
+			$result = $processorConfiguration[$key];
+			foreach ($result as $table => $list) {
+				$result[$table] = GeneralUtility::trimExplode(',', $list);
+			}
+		}
+		return $result;
 	}
 
 	/**
@@ -509,7 +644,7 @@ class ReflectionService
 	 * Get configration for building array like building images (max width, max height ..)
 	 *
 	 * @return  array
-	 */ 
+	 */
 	public function getBuildingConfiguration()
 	{
 		return $this->buildingConfiguration;
@@ -521,10 +656,44 @@ class ReflectionService
 	 * @param  array  $buildingConfiguration  Configration for building array like building images (max width, max height ..)
 	 *
 	 * @return  self
-	 */ 
+	 */
 	public function setBuildingConfiguration(array $buildingConfiguration)
 	{
 		$this->buildingConfiguration = $buildingConfiguration;
+
+		return $this;
+	}
+
+	/**
+	 * Get array for used TCA field definitions, helpful for Post-handling that prepared data
+	 *
+	 * @return  array
+	 */
+	public function getTcaFieldDefinition()
+	{
+		return $this->tcaFieldDefinition;
+	}
+
+	/**
+	 * Get flag for Debug Mode
+	 *
+	 * @return  bool
+	 */
+	public function getDebug()
+	{
+		return $this->debug;
+	}
+
+	/**
+	 * Set flag for Debug Mode
+	 *
+	 * @param  bool  $debug  Flag for Debug Mode
+	 *
+	 * @return  self
+	 */
+	public function setDebug(bool $debug)
+	{
+		$this->debug = $debug;
 
 		return $this;
 	}

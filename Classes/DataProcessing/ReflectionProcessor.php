@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Jar\Utilities\DataProcessing;
 
 use Jar\Utilities\Services\ReflectionService;
-use Jar\Utilities\Utilities\LocalizationUtility;
 use Jar\Utilities\Utilities\TypoScriptUtility;
 use TYPO3\CMS\Core\Utility\ArrayUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
+use TYPO3\CMS\Frontend\ContentObject\ContentDataProcessor;
 use TYPO3\CMS\Frontend\ContentObject\DataProcessorInterface;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 
@@ -69,65 +69,50 @@ class ReflectionProcessor implements DataProcessorInterface
      * @return array the processed data as key/value store
      */
     public function process(ContentObjectRenderer $cObj, array $contentObjectConfiguration, array $processorConfiguration, array $processedData)
-    {
-        $processorConfiguration = TypoScriptUtility::populateTypoScriptConfiguration($processorConfiguration);
+    {        
+        $populatedProcessorConfiguration = TypoScriptUtility::populateTypoScriptConfiguration($processorConfiguration, $cObj);        
+        $table = $populatedProcessorConfiguration['table'] ?? $processedData['table'] ?? 'tt_content';
+        $row = $populatedProcessorConfiguration['row'] ?? $processedData['data'] ?? $processedData;
+        $maxDepth = $populatedProcessorConfiguration['maxDepth'] ?? 8;
 
-        $table = $processorConfiguration['table'] ?? 'tt_content';
-        $row = $processorConfiguration['row'] ?? $processedData['data'] ?? $processedData;
-        $maxDepth = $processorConfiguration['maxDepth'] ?? 8;
+        $reflectionService = GeneralUtility::makeInstance(ReflectionService::class);        
+        $reflectionService->setPropertiesByConfigurationArray($populatedProcessorConfiguration);
 
-        $reflectionService = GeneralUtility::makeInstance(ReflectionService::class);
-
-        $tableColumnBlacklist = $this->convertProcessorConfigurationStringListToArray($processorConfiguration, 'tableColumnBlacklist');
-        if (!empty($tableColumnBlacklist)) {
-            $reflectionService->addToTableColumnBlacklist($tableColumnBlacklist);
-        }
-
-        $tableColumnWhitelist = $this->convertProcessorConfigurationStringListToArray($processorConfiguration, 'tableColumnWhitelist');
-        if (!empty($tableColumnWhitelist)) {
-            $reflectionService->setTableColumnWhitelist($tableColumnWhitelist);
-        }
-
-        $tableColumnRemoveablePrefixes = $this->convertProcessorConfigurationStringListToArray($processorConfiguration, 'tableColumnRemoveablePrefixes');
-        if (!empty($tableColumnRemoveablePrefixes)) {
-            $reflectionService->setTableColumnRemoveablePrefixes($tableColumnRemoveablePrefixes);
-        }
-
-        if (!empty($processorConfiguration['tableColumnRemapping']) && is_array($processorConfiguration['tableColumnRemapping'])) {
-            $reflectionService->setTableColumnRemapping($processorConfiguration['tableColumnRemapping']);
-        }
-
-        if (!empty($processorConfiguration['buildingConfiguration']) && is_array($processorConfiguration['buildingConfiguration'])) {
-            $reflectionService->setBuildingConfiguration($processorConfiguration['buildingConfiguration']);
-        }
-
-
-        $result = $reflectionService->buildArrayByRow($row, $table, $maxDepth);
-
-        if (!empty($processorConfiguration['as'])) {
-            $processedData[$processorConfiguration['as']] = $result;
+        // special case: when $processedData has the property "rows" use that instead and handle the whole list (performance boost by nested DataProcessors) 
+        $singleRowMode = !key_exists('rows', $processedData);
+        if($singleRowMode) {
+            $result = $reflectionService->buildArrayByRow($row, $table, $maxDepth);            
         } else {
-            ArrayUtility::mergeRecursiveWithOverrule($processedData, $result);
+            $result = $reflectionService->buildArrayByRows($processedData['rows'] ?? [], $table, $maxDepth);            
+        }
+
+        // handle nested dataprocessors
+        if (!empty($processorConfiguration['dataProcessing.'])) {
+            $contentDataProcessor = GeneralUtility::makeInstance(ContentDataProcessor::class);
+            $recordContentObjectRenderer = GeneralUtility::makeInstance(ContentObjectRenderer::class);            
+            foreach ($result as $key => $item) {                
+                $recordContentObjectRenderer->start($item, $table);
+                $result[$key] = $contentDataProcessor->process($recordContentObjectRenderer, $processorConfiguration, $item);
+            }
+        }        
+
+        if (!empty($populatedProcessorConfiguration['as'])) {
+            $processedData[$populatedProcessorConfiguration['as']] = $result;
+        } else {
+            if($singleRowMode) {
+                if((bool) $populatedProcessorConfiguration['replace']) {
+                    $processedData = $result;
+                } else {
+                    ArrayUtility::mergeRecursiveWithOverrule($processedData, $result);            
+                }
+            } else {
+                $processedData = $result;
+            }
         }
 
         return $processedData;
     }
 
 
-    /**
-     * @param array $processorConfiguration 
-     * @param string $key 
-     * @return array 
-     */
-    private function convertProcessorConfigurationStringListToArray(array $processorConfiguration, string $key): array
-    {
-        $result = [];
-        if (!empty($processorConfiguration[$key]) && is_array($processorConfiguration[$key])) {
-            $result = $processorConfiguration[$key];
-            foreach ($result as $table => $list) {
-                $result[$table] = GeneralUtility::trimExplode(',', $list);
-            }
-        }
-        return $result;
-    }
+    
 }

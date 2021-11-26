@@ -17,18 +17,20 @@ use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 
 /** 
  * @package Jar\Utilities\Utilities 
-  **/
+ **/
 
-class ContentUtility {    
+class ContentUtility
+{
 
-    /**
+	/**
 	 * @param string $uid
 	 * @throws Exception
 	 * @return string
 	 */
-	public static function renderElement($uid = null) {
-		
-		if(empty($uid)) {
+	public static function renderElement($uid = null)
+	{
+
+		if (empty($uid)) {
 			return '';
 		}
 
@@ -40,6 +42,5 @@ class ContentUtility {
 		]);
 
 		return $ce;
-    }
-	
+	}
 }

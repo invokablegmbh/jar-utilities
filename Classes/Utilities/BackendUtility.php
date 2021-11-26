@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Jar\Utilities\Utilities;
 
 use InvalidArgumentException;
+use Jar\Utilities\Services\RegistryService;
 use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Backend\Utility\BackendUtility as BackendUtilityCore;
@@ -21,7 +22,7 @@ use TYPO3\CMS\Core\Type\Bitmask\Permission;
 
 /** 
  * @package Jar\Utilities\Utilities 
- * Utility Class Backend for Tasks
+ * Utility Class for Backend Tasks
  **/
 
 class BackendUtility
@@ -176,5 +177,70 @@ class BackendUtility
 		$editLink = static::getEditLink($table, $uid);
 
 		return empty($editLink) ? $content : '<a href="' . $editLink . '">' . $content . '</a>';
+	}
+
+
+
+	/**
+	 * returns informations from the "New Content Wizard"
+	 * f.e. "getWizardInformations('html')"
+	 * [
+	 *       iconIdentifier => 'content-special-html',
+	 *       title => 'Plain HTML',
+	 *       description => 'With this element you can insert raw HTML code on the page.'
+	 *       ...
+	 * ]
+	 * 
+	 * @param string $ctype 
+	 * @return array 
+	 * @throws InvalidArgumentException 
+	 * @throws TooDirtyException 
+	 * @throws ReflectionException 
+	 */
+	public static function getWizardInformations(string $ctype): array
+	{
+		$cache = GeneralUtility::makeInstance(RegistryService::class);
+		$hash = 'all-wizard-elements';
+
+		if (($elements = $cache->get('backend-utility', $hash)) === false) {
+
+			$elements = IteratorUtility::map(
+				IteratorUtility::flatten(
+					IteratorUtility::pluck(
+						TypoScriptUtility::convertTypoScriptArrayToPlainArray(
+							BackendUtilityCore::getPagesTSconfig(BackendUtility::currentPageUid())['mod.']['wizards.']['newContentElement.']['wizardItems.'] ?? []
+						),
+						'elements'
+					)
+				),
+				function ($element) {
+					$element['title'] = LocalizationUtility::localize($element['title']);
+					$element['description'] = LocalizationUtility::localize($element['description']);
+					return $element;
+				}
+			);
+
+			$cache->set('backend-utility', $hash, $elements);
+		}
+		return $elements[$ctype];
+	}
+
+
+	/**
+	 * @return array 
+	 * @throws InvalidArgumentException 
+	 */
+	public static function getCurrentPageTS(): array {
+		$cache = GeneralUtility::makeInstance(RegistryService::class);
+		$hash = 'current-page-ts';
+
+		if (($pageTs = $cache->get('backend-utility', $hash)) === false) {
+			$pageTs = TypoScriptUtility::convertTypoScriptArrayToPlainArray(
+				BackendUtilityCore::getPagesTSconfig(BackendUtility::currentPageUid())
+			);
+			$cache->set('backend-utility', $hash, $pageTs);
+		}
+
+		return $pageTs;
 	}
 }

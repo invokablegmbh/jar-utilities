@@ -103,6 +103,7 @@ class FileUtility
 			$result['type'] = $fileReference->getType();
 			$result['mimetype'] = $fileReference->getMimeType();
 			$result['size'] = $fileReference->getSize();
+			$result['basename'] = $fileReference->getNameWithoutExtension();
 		}
 
 

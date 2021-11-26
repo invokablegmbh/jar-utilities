@@ -146,15 +146,18 @@ class TypoScriptUtility
 	 *  tree.value = Blupp
 	 * 
 	 * @param array $conf 
+	 * @param null|ContentObjectRenderer $cObj
 	 * @return array 
 	 * @throws InvalidArgumentException 
 	 */
-	public static function populateTypoScriptConfiguration(array $conf): array
+	public static function populateTypoScriptConfiguration(array $conf, ?ContentObjectRenderer $cObj = null): array
 	{
-		$cObj = GeneralUtility::makeInstance(ContentObjectRenderer::class);
+		if($cObj === null) {
+			$cObj = GeneralUtility::makeInstance(ContentObjectRenderer::class);
+		}
 		foreach ($conf as $key => $c) {
 
-			$isChild = (substr($key, -1) === '.');	// f.e. "bla."
+			$isChild = (substr((string) $key, -1) === '.');	// f.e. "bla."
 
 			if (!$isChild) {
 				// Just populate fields with subinformations
@@ -172,7 +175,7 @@ class TypoScriptUtility
 				// when no Parent exist save the values and remove the . at the end
 				if (!$hasParent) {
 					// also populate substructure
-					$c = static::populateTypoScriptConfiguration($c);
+					$c = static::populateTypoScriptConfiguration($c, $cObj);
 					$conf[$parentKey] = $c;
 				}
 			}

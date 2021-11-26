@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Jar\Utilities\Utilities;
 
 use TYPO3\CMS\Core\Cache\CacheManager;
+use TYPO3\CMS\Core\Localization\LanguageService;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 use TYPO3\CMS\Extbase\Utility\LocalizationUtility as CoreLocalizationUtility;
@@ -42,5 +43,23 @@ class LocalizationUtility
         }
         
         return $result;
+    }
+
+
+    /**
+     * @return LanguageService
+     */
+    public static function getLanguageService(): LanguageService
+    {
+        return $GLOBALS['LANG'] ?? GeneralUtility::makeInstance(LanguageService::class);
+    }
+
+    /**
+     * @param string $input 
+     * @param bool $withFallback returns the original $input when no translation is found
+     * @return void 
+     */
+    public static function localize(string $input, bool $withFallback = true) {
+        return self::getLanguageService()->sL($input) ?? $input;
     }
 }
