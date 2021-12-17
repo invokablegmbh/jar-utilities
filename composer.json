@@ -4,13 +4,19 @@
     "description": "Utility classes that simplify TYPO3 development",
     "license": "GPL-2.0-or-later",
     "authors": [
-        {
-            "name": "JAR Media GmbH",
-            "role": "Developer",
-            "email": "info@jar.media",
-            "homepage": "https://jar.media"
-        }
-    ],
+	    {
+	        "name": "Julian Lichte",
+	        "email": "julian.lichte@invokable.gmbh",
+	        "homepage": "https://invokable.gmbh",
+	        "role": "Developer"
+	    },
+	    {
+	        "name": "Maurice Möllmer",
+	        "email": "maurice.moellmer@invokable.gmbh",
+	        "homepage": "https://invokable.gmbh",
+	        "role": "Developer"
+	    }
+	],
     "autoload": {
         "psr-4": {
             "Jar\\Utilities\\": "Classes/"
