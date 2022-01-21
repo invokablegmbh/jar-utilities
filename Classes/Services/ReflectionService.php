@@ -138,6 +138,10 @@ class ReflectionService
 		$result = [];
 		$result['uid'] = $uid = $row['uid'];
 
+		if(empty($row)) {
+			return [];
+		}
+
 		// Return referende from storage if element allready was populated
 		if ($this->isInStorage($table, $uid)) {
 			return $this->elementStorage[$table][$uid];
