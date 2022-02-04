@@ -29,6 +29,8 @@ use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
  *          20 {
  *              extensionsToLoad = j77template
  *              as = translations
+ *              # if flat = 1, all translations will be merged into one big list, otherwise they will be grouped by extension
+ *              flat = 0
  *          }
  *     }
  * }
@@ -58,13 +60,21 @@ class LocalizationProcessor implements DataProcessorInterface
             if (!empty($extensionsToLoad)) {
                 $localizationUtility = GeneralUtility::makeInstance(LocalizationUtility::class);
                 foreach ($extensionsToLoad as $extension) {
-                    $result[$extension] = $localizationUtility->loadTyposcriptTranslations($extension);
+                    //if flat = 1, all translations will be merged into one big list, otherwise they will be grouped by extension
+                    if(!!$processorConfiguration['flat']) {
+                        ArrayUtility::mergeRecursiveWithOverrule($result, $localizationUtility->loadTyposcriptTranslations($extension));
+                    } else {
+                        $result[$extension] = $localizationUtility->loadTyposcriptTranslations($extension);
+                    }
                 }
             }
         }
 
         if (!empty($processorConfiguration['as'])) {
-            $processedData[$processorConfiguration['as']] = $result;
+            if(!is_array($processedData[$processorConfiguration['as']])) {
+                $processedData[$processorConfiguration['as']] = [];
+            }
+            ArrayUtility::mergeRecursiveWithOverrule($processedData[$processorConfiguration['as']], $result);
         } else {
             ArrayUtility::mergeRecursiveWithOverrule($processedData, $result);
         }
