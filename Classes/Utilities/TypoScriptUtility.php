@@ -164,6 +164,13 @@ class TypoScriptUtility
 				if (!key_exists($key . '.', $conf)) {
 					continue;
 				}
+
+				// just populate registered cObjects
+				$cObjects = array_keys($GLOBALS['TYPO3_CONF_VARS']['FE']['ContentObjects']);
+				if(!in_array($c, $cObjects)) {
+					continue;
+				}
+
 				$conf[$key] = $cObj->cObjGetSingle($c, $conf[$key . '.']);
 			} else {
 				$parentKey = substr($key, 0, -1);
