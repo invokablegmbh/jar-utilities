@@ -36,11 +36,16 @@ class TypoScriptUtility
 	public static function get(string $path = null, int $pageUid = null, bool $populated = false): array
 	{
 		$cache = GeneralUtility::makeInstance(RegistryService::class);
-		$hash = $path . '_' . ((int)$pageUid) . '_' . $populated;
+
+		$cachePage = $pageUid === null ? BackendUtility::currentPageUid() : $pageUid;
+		$hash = $path . '_' . ((int)$cachePage) . '_' . $populated;
 
 		if (($ts_array = $cache->get('ts', $hash)) === false) {
 			if ($pageUid === null && TYPO3_MODE === 'FE') {
 				$setup = $GLOBALS['TSFE']->tmpl->setup;
+				if (empty($setup)) {
+					$setup = static::loadTypoScript(BackendUtility::currentPageUid());
+				}
 			} else {
 				$setup = static::loadTypoScript($pageUid);
 			}
