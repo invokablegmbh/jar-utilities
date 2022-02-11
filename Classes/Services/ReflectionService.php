@@ -153,7 +153,7 @@ class ReflectionService
 		$tcaColumns = TcaUtility::getColumnsByRow($table, $row);
 
 		$whitelist = $this->tableColumnWhitelist[$table] ?? [];
-		$blacklist = array_merge($this->columnBlacklist ?? [], $this->tableColumnBlacklist[$table] ?? []);
+		$blacklist = array_merge($this->columnBlacklist ?? [], $this->tableColumnBlacklist[$table] ?? []);		
 		$removeablePrefixes = $this->tableColumnRemoveablePrefixes[$table] ?? [];
 		$columnRemapping = $this->tableColumnRemapping[$table] ?? [];
 

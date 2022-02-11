@@ -222,7 +222,7 @@ class IteratorUtility
      * @param string $whitelist keys you want to keep
      * @return array
      */
-    public static function indexBy(array $arr, array $key): array
+    public static function indexBy(array $arr, string $key): array
     {
         $r = [];
         foreach ($arr as $a) {
