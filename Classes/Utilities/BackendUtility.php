@@ -22,7 +22,7 @@ use TYPO3\CMS\Core\Type\Bitmask\Permission;
 
 /** 
  * @package Jar\Utilities\Utilities 
- * Utility Class for Backend Tasks
+ * Collection of Helpers for Backend Developing
  **/
 
 class BackendUtility
@@ -168,7 +168,7 @@ class BackendUtility
 	/**
 	 * get Backend Routing Link, ready with <a ...>$content</a>
 	 * @param string $table
-	 * @param string $uid
+	 * @param int $uid
 	 * @param string $content
 	 * @return string Link 
 	 */
