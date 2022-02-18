@@ -23,6 +23,7 @@ class ContentUtility
 {
 
 	/**
+	 * Render the output of a Content Element
 	 * @param string $uid
 	 * @throws Exception
 	 * @return string
