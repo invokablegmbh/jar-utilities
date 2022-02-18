@@ -43,9 +43,9 @@ class TypoScriptUtility
 		if (($ts_array = $cache->get('ts', $hash)) === false) {
 			if ($pageUid === null && TYPO3_MODE === 'FE') {
 				$setup = $GLOBALS['TSFE']->tmpl->setup;
-			} else {
-				$setup = static::loadTypoScript($pageUid);
-			}
+			} else if ($pageUid) {
+                $setup = static::loadTypoScript($pageUid);
+            }
 
 			$setup = empty($setup) ? [] : $setup;
 
