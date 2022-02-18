@@ -9,7 +9,7 @@
 .. _start:
 
 =============================================================
-Extension Name
+JAR Utilities
 =============================================================
 
 :Version:
@@ -29,25 +29,17 @@ Extension Name
    `CC BY-NC-SA 4.0 <https://creativecommons.org/licenses/by-nc-sa/4.0/>`__ (Creative Commons)
    license
 
-{extension.description}
+Utility classes that simplify TYPO3 development. We have been developing TYPO3 projects for over 10 years using the same little helpers repeatedly.
+Now we outsourced these helpers in an own extension to offer all TYPO3 developers a faster and easier way to develop their extensions as well.
 
 **TYPO3**
 
 The content of this document is related to TYPO3 CMS,
 a GNU/GPL CMS/Framework available from `typo3.org <https://typo3.org/>`_ .
 
-**Community Documentation**
-
-This documentation is community documentation for the TYPO3 extension {extension.name}
-
-It is maintained as part of this third party extension.
-
-If you find an error or something is missing, please:
-`Report a Problem <https://github.com/TYPO3-Documentation/TYPO3CMS-Example-ExtensionManual/issues/new>`__
-
 **Extension Manual**
 
-This documentation is for the TYPO3 extension <extkey>.
+This documentation is for the TYPO3 extension jar_utilities.
 
 ..   Note for editors:
 ..   temporarily removed from menu:
@@ -61,10 +53,9 @@ This documentation is for the TYPO3 extension <extkey>.
 .. toctree::
    :maxdepth: 3
 
-   Editor/Index
    Installation/Index
+   Overview/Index
    Configuration/Index
-   Templates/Index
    Developer/Index
    KnownProblems/Index
 

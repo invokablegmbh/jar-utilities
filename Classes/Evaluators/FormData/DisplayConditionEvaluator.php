@@ -21,6 +21,7 @@ use TYPO3\CMS\Backend\Form\FormDataProvider\EvaluateDisplayConditions;
 class DisplayConditionEvaluator extends EvaluateDisplayConditions
 {
 	/**
+	 * Helper Method to check which TCA fields are currently displayed in Backend
 	 * @param mixed $condition 
 	 * @param array $row 
 	 * @return bool 
