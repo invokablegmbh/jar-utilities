@@ -138,7 +138,7 @@ class ReflectionService
 		$result = [];
 		$result['uid'] = $uid = $row['uid'];
 
-		if(empty($row)) {
+		if (empty($row)) {
 			return [];
 		}
 
@@ -153,7 +153,7 @@ class ReflectionService
 		$tcaColumns = TcaUtility::getColumnsByRow($table, $row);
 
 		$whitelist = $this->tableColumnWhitelist[$table] ?? [];
-		$blacklist = array_merge($this->columnBlacklist ?? [], $this->tableColumnBlacklist[$table] ?? []);		
+		$blacklist = array_merge($this->columnBlacklist ?? [], $this->tableColumnBlacklist[$table] ?? []);
 		$removeablePrefixes = $this->tableColumnRemoveablePrefixes[$table] ?? [];
 		$columnRemapping = $this->tableColumnRemapping[$table] ?? [];
 
@@ -292,8 +292,11 @@ class ReflectionService
 							$foreignTables = IteratorUtility::pluck($resolvedItemArray, 'table');
 							$foreignTableAmount = Count(array_unique($foreignTables));
 							$connectionPool = GeneralUtility::makeInstance(ConnectionPool::class);
+
+							// set currentLanguage to the language of the row
+							$currentLanguageUid = $row['sys_language_uid'];
 							if ($foreignTableAmount === 1) {
-								// TODO: Just load Elements which aren't loaded
+								// TODO: Just load Elements which aren't loaded yet
 								$foreignTable = reset($foreignTables);
 								$queryBuilder = $connectionPool->getQueryBuilderForTable($foreignTable);
 								$selectUids = IteratorUtility::pluck($resolvedItemArray, 'uid');
@@ -301,7 +304,7 @@ class ReflectionService
 									->select('*')
 									->from($foreignTable)
 									->where(
-										$this->createLanguageContraints($queryBuilder, $selectUids, $foreignTable)
+										$this->createLanguageContraints($queryBuilder, $selectUids, $foreignTable, $currentLanguageUid)
 									)
 									->execute();
 
@@ -320,7 +323,7 @@ class ReflectionService
 										->select('*')
 										->from($resolvedItem['table'])
 										->where(
-											$this->createLanguageContraints($queryBuilder, $resolvedItem['uid'], $resolvedItem['table'])
+											$this->createLanguageContraints($queryBuilder, $resolvedItem['uid'], $resolvedItem['table'], $currentLanguageUid)
 										)
 										->execute();
 									if ($foreignRow = $queryResult->fetch()) {
@@ -354,9 +357,10 @@ class ReflectionService
 	 * @param QueryBuilder $queryBuilder 
 	 * @param string $table 
 	 * @param mixed $singleUidOrUidList 
+	 * @param ?int $currentLanguageUid
 	 * @return null|CompositeExpression 	 
 	 */
-	private function createLanguageContraints(QueryBuilder $queryBuilder, $singleUidOrUidList, string $table)
+	private function createLanguageContraints(QueryBuilder $queryBuilder, $singleUidOrUidList, string $table, int $currentLanguageUid = null)
 	{
 		$uidContstraints = [];
 		$languageConstraints = [];
@@ -376,11 +380,13 @@ class ReflectionService
 		if ($languageConfig !== null) {
 			$languageField = $languageConfig['languageField'];
 			$languageParentField = $languageConfig['transOrigPointerField'];
-			$currentLanguageUid = FrontendUtility::getCurrentLanguageId();
+			$currentLanguageUid = $currentLanguageUid ?? FrontendUtility::getCurrentLanguageId();
 
 			// just load elements from the current language or which are marked for "all languages (-1)"
 			$languageConstraints[] = $queryBuilder->expr()->eq($languageField, $currentLanguageUid);
-			$languageConstraints[] = $queryBuilder->expr()->eq($languageField, -1);
+			if ($currentLanguageUid !== -1) {
+				$languageConstraints[] = $queryBuilder->expr()->eq($languageField, -1);
+			}
 
 			// also load translated elements where the parent is matching
 			if (is_array($singleUidOrUidList)) {
@@ -393,6 +399,11 @@ class ReflectionService
 				// UID Single Mode
 				$uidContstraints[] = $queryBuilder->expr()->eq($languageParentField, $queryBuilder->createNamedParameter((int) $singleUidOrUidList, \PDO::PARAM_INT));
 			}
+		}
+
+		if ($this->debug) {
+			DebuggerUtility::var_dump($uidContstraints, 'UID Contraints for ' . $table);
+			DebuggerUtility::var_dump($languageConstraints, 'Language Contraints for ' . $table);
 		}
 
 		return $queryBuilder->expr()->andX(
