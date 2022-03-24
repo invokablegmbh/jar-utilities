@@ -6,6 +6,7 @@ namespace Jar\Utilities\Utilities;
 
 use InvalidArgumentException;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 
 /*
@@ -103,6 +104,11 @@ class FormatUtility
 		if (empty($date)) {
 			return null;
 		}
+
+		if($date === '0000-00-00 00:00:00') {
+			return null;
+		}	
+		
 		return self::buildDateTimeArray(new \DateTime(date('c', strtotime($date . ' UTC'))));
 	}
 
