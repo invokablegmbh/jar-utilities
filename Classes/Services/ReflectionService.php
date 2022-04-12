@@ -249,6 +249,7 @@ class ReflectionService
 					case 'inline':
 					case 'select':
 					case 'group':
+					case 'category':
 						// just return the raw value(s) of flat selects or group which aren't handle db-relations
 						if (
 							($config['type'] === 'group' && $config['internal_type'] !== 'db') ||
