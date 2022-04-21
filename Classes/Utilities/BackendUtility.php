@@ -22,19 +22,20 @@ use TYPO3\CMS\Core\Type\Bitmask\Permission;
 
 /** 
  * @package Jar\Utilities\Utilities 
- * Collection of Helpers for Backend Developing
+ * Collection of helpers for backend developing.
  **/
 
 class BackendUtility
 {
 
 	/**
-	 * Creates a Frontend Link, in Backend Context     
-	 * @param int $pageUid
-	 * @param array $params	 
-	 * @return string
+	 * Creates a frontend link, in backend context.
+	 * 
+	 * @param int $pageUid The page uid.
+	 * @param array $params Typolink parameters.	 
+	 * @return string Link url.
 	 */
-	public static function createFrontendLink(int $pageUid = 1, array $params = []): array
+	public static function createFrontendLink(int $pageUid = 1, array $params = []): string
 	{
 		if (empty($GLOBALS['TSFE'])) {
 			static::initFrontend();
@@ -56,6 +57,7 @@ class BackendUtility
 
 	/**
 	 * Init Frontend Structure (f.e. for Link Generating in CLI-Commands)
+	 * 
 	 * @return void 
 	 * @throws InvalidArgumentException 
 	 */
@@ -78,8 +80,9 @@ class BackendUtility
 
 
 	/**
-	 * Returns the current PageUid 
-	 * @return int  
+	 * Returns the current page uid (in backend and frontend context).
+	 * 
+	 * @return int Current page uid.
 	 * */
 	public static function currentPageUid(): int
 	{
@@ -101,14 +104,13 @@ class BackendUtility
 	/**
 	 * Get the fully-qualified domain name of the host.
 	 *
-	 * @param bool $requestHost Use request host (when not in CLI mode).
 	 * @return string The fully-qualified host name.
 	 */
-	public static function getHostname(bool $requestHost = true): string
+	public static function getHostname(): string
 	{
 		$host = '';
 		// If not called from the command-line, resolve on getIndpEnv()
-		if ($requestHost && !Environment::isCli()) {
+		if (!Environment::isCli()) {
 			$host = GeneralUtility::getIndpEnv('HTTP_HOST');
 		}
 		if (!$host) {
@@ -138,10 +140,11 @@ class BackendUtility
 
 
 	/**
-	 * get Backend Routing Link
-	 * @param string $table
-	 * @param string $uid
-	 * @return string Link 
+	 * Get route link for editing records in backend.
+	 * 
+	 * @param string $table The record table.
+	 * @param string $uid The record uid.
+	 * @return string Link The resulting link.
 	 */
 	public static function getEditLink(string $table, int $uid): string
 	{
@@ -166,11 +169,11 @@ class BackendUtility
 
 
 	/**
-	 * get Backend Routing Link, ready with <a ...>$content</a>
-	 * @param string $table
-	 * @param int $uid
-	 * @param string $content
-	 * @return string Link 
+	 * Get route link for editing records in backend. Wrapped in a <a>-Tag
+	 * @param string $table The record table.
+	 * @param int $uid The record uid.
+	 * @param string $content Inner HTML of the <a>-tag.
+	 * @return string Link The resulting <a>-tag.
 	 */
 	public static function getWrappedEditLink(string $table, int $uid, string $content): string
 	{
@@ -182,7 +185,7 @@ class BackendUtility
 
 
 	/**
-	 * returns informations from the "New Content Wizard"
+	 * Returns informations from the "New Content Wizard".
 	 * f.e. "getWizardInformations('html')"
 	 * [
 	 *       iconIdentifier => 'content-special-html',
@@ -191,8 +194,8 @@ class BackendUtility
 	 *       ...
 	 * ]
 	 * 
-	 * @param string $ctype 
-	 * @return array 
+	 * @param string $ctype The CType.
+	 * @return array Informations about that wizard.
 	 * @throws InvalidArgumentException 
 	 * @throws TooDirtyException 
 	 * @throws ReflectionException 
@@ -227,7 +230,9 @@ class BackendUtility
 
 
 	/**
-	 * @return array 
+	 * Returns the current page TSconfig as array.
+	 * 
+	 * @return array Current page TSconfig.
 	 * @throws InvalidArgumentException 
 	 */
 	public static function getCurrentPageTS(): array {

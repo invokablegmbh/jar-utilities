@@ -7,6 +7,7 @@ namespace Jar\Utilities\Utilities;
 use InvalidArgumentException;
 use RuntimeException;
 use TYPO3\CMS\Core\Imaging\ImageManipulation\CropVariantCollection;
+use TYPO3\CMS\Core\Resource\Exception\ResourceDoesNotExistException;
 use TYPO3\CMS\Core\Resource\FileReference;
 use TYPO3\CMS\Core\Resource\FileRepository;
 use TYPO3\CMS\Core\Resource\ProcessedFile;
@@ -24,20 +25,27 @@ use UnexpectedValueException;
 
 /** 
  * @package Jar\Utilities\Utilities 
- * Utility Class for handling Files
+ * Handle files and their references.
  **/
 
 class FileUtility
 {
 	/**
-	 * @param int $uid 
-	 * @return null|FileReference 
+	 * Loads \TYPO3\CMS\Core\Resource\FileReference object from sys_file_reference table via uid.
+	 * 
+	 * @param int $uid UID of the sys_file_reference record.
+	 * @return null|FileReference Return null if resource doesn't exist or file is missing.
 	 * @throws InvalidArgumentException 
 	 */
 	public static function getFileReferenceByUid(int $uid): ?FileReference
-	{
+	{		
 		$fileRepository = GeneralUtility::makeInstance(FileRepository::class);
-		$fileReference = $fileRepository->findFileReferenceByUid($uid);
+		try {
+			$fileReference = $fileRepository->findFileReferenceByUid($uid);		
+		} catch(ResourceDoesNotExistException $e) {
+			return null;
+		}
+
 		if ($fileReference->isMissing()) {
 			return null;
 		}
@@ -48,9 +56,12 @@ class FileUtility
 
 
 	/**
-	 * @param int $uid 
+	 * Shorthand for FileUtility::buildFileArrayBySysFileReference(FileUtility::getFileReferenceByUid($uid)),
+	 * accepts the UID of an FileReference instead of using the FileReference object directly.
+	 * 
+	 * @param int $uid UID of the sys_file_reference record.
 	 * @param null|array $configuration See Manual
-	 * @return null|array 
+	 * @return null|array File-information array or ``null`` if resource doesn't exist or file is missing.
 	 * @throws InvalidArgumentException 
 	 * @throws RuntimeException 
 	 */
@@ -62,9 +73,11 @@ class FileUtility
 
 
 	/**
+	 * Preparation of files and images in a simple array structure. Very helpful in image preparation and cropping.
+	 * 
 	 * @param null|FileReference $fileReference
 	 * @param null|array $configuration See Manual 	
-	 * @return null|array 
+	 * @return null|array File-information array or ``null`` if resource doesn't exist or file is missing.
 	 * @throws InvalidArgumentException 
 	 * @throws RuntimeException 
 	 * @throws UnexpectedValueException 
@@ -82,7 +95,7 @@ class FileUtility
 			'processingConfigurationForCrop' => []
 		];
 
-		ArrayUtility::mergeRecursiveWithOverrule($setup, $configuration);
+		ArrayUtility::mergeRecursiveWithOverrule($setup, $configuration ?? []);
 
 		$result = [];
 
@@ -130,9 +143,11 @@ class FileUtility
 	}
 
 	/**
-	 * @param int $bytes 
-	 * @param int $decimals 
-	 * @return string 
+	 * Converts filesizes in a human readable format.
+	 * 
+	 * @param int $bytes Size of file in bytes.
+	 * @param int $decimals (optional) Length of decimals.
+	 * @return string Filesize in human readable format.
 	 */
 	public static function humanFilesize(int $bytes, int $decimals = 2): string
 	{

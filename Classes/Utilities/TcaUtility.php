@@ -21,16 +21,18 @@ use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 
 /** 
  * @package Jar\Utilities\Utilities 
- * Utility Class for working faster with the TCA
+ * Utility Class for working faster with the TCA.
  **/
 
 class TcaUtility
 {
 
 	/**
-	 * @param string $table 
-	 * @param string $type 
-	 * @return array 
+	 * Returns active columns by TCA type.
+	 * 
+	 * @param string $table The table name.
+	 * @param string $type The type name.
+	 * @return array List of column names.
 	 * @throws InvalidArgumentException 
 	 */
 	public static function getColumnsByType(string $table, string $type): array
@@ -49,9 +51,11 @@ class TcaUtility
 
 
 	/**
-	 * @param string $table 
-	 * @param array $row 
-	 * @return array 
+	 * Returns active columns based on a table record.
+	 * 
+	 * @param string $table The table name.
+	 * @param array $row The table record.
+	 * @return array List of column names.
 	 */
 	public static function getColumnsByRow(string $table, array $row): array
 	{
@@ -60,8 +64,10 @@ class TcaUtility
 	}
 
 	/**
-	 * @param string $table 	 
-	 * @return array 	 
+	 * Returns all default columns from a table.
+	 * 
+	 * @param string $table The table name.
+	 * @return array List of column names. 
 	 */
 	public static function getColumnsByTable(string $table): array
 	{
@@ -72,9 +78,11 @@ class TcaUtility
 
 
 	/**
-	 * @param string $table 
-	 * @param array $row 
-	 * @return string 
+	 * Returns actice TCA type based on a table record. 
+	 * 
+	 * @param string $table The table name.
+	 * @param array $row The table record.
+	 * @return string Name of the type will fallback to default type when no individual type is found.
 	 */
 	public static function getTypeFromRow(string $table, array $row): string
 	{
@@ -93,11 +101,11 @@ class TcaUtility
 
 
 	/**
-	 * just return the columns which are visible for the current Backend User
+	 * Just return the columns which are visible for the current Backend User, respects current active display conditions of fields.
 	 * 
-	 * @param string $table 
-	 * @param array $row 
-	 * @return array 
+	 * @param string $table The table name.
+	 * @param array $row The table record.
+	 * @return array List of column names.
 	 */
 	public static function getVisibleColumnsByRow(string $table, array $row): array
 	{
@@ -135,8 +143,10 @@ class TcaUtility
 
 
 	/**
-	 * @param string $table 
-	 * @return string 
+	 * Returns the column name which contains the "type" value from a table.
+	 * 
+	 * @param string $table The table name.
+	 * @return string The name of the "type" column.
 	 */
 	public static function getTypeFieldOfTable(string $table): ?string
 	{
@@ -145,8 +155,10 @@ class TcaUtility
 	}
 
 	/**
-	 * @param string $table 
-	 * @return string 
+	 * Returns the column name which contains the "label" value from a table.
+	 * 
+	 * @param string $table The table name.
+	 * @return string The name of the "label" column.
 	 */
 	public static function getLabelFieldOfTable(string $table): ?string
 	{
@@ -155,13 +167,13 @@ class TcaUtility
 	}
 
 	/**
-	 * Return the label from a given row
+	 * Returns the label from a table record.
 	 * example ($table 'pages'):
 	 *  [ uid => 3, doktype => 254, title => 'Elemente'] results in "Elemente"
 	 *
-	 * @param array $row
-	 * @param string $table
-	 * @return string|null
+	 * @param array $row The table record.
+	 * @param string $table The table name.
+	 * @return string|null The label or "null" when empty.
 	 */
 	public static function getLabelFromRow(array $row, string $table): ?string
 	{
@@ -170,12 +182,12 @@ class TcaUtility
 
 
 	/**
-	 * Converts a list of TCA Columns (a,b,c) to [a,b,c] 
-	 * also pallet information is resolved (if $table is available)
+	 * Converts a comma-separated list of TCA Columns (a,b,c) to [a,b,c] 
+	 * also containing pallet information will be resolved (if table is available)
 	 * 
-	 * @param string $list 
-	 * @param string $table 
-	 * @return array	  
+	 * @param string $list Comma-separated list of TCA Columns.
+	 * @param string $table The table name.
+	 * @return array List of column names.
 	 */
 	public static function mapStringListToColumns(string $list, string $table = null): array
 	{
@@ -205,10 +217,13 @@ class TcaUtility
 
 
 	/**
-	 * @param string $table
-	 * @param string $column 
-	 * @param null|string $type type to respect column overrides
-	 * @return null|array 
+	 * Returns the current TCA field definition from a table column.
+	 * Also resolves column overrides when "type" is set.
+	 * 
+	 * @param string $table The table name.
+	 * @param string $column The column name.
+	 * @param null|string $type The type to respect column overrides.
+	 * @return null|array The field definition or "null" when no field definition is found.
 	 */
 	public static function getFieldDefinition(string $table, string $column, ?string $type = null): ?array
 	{
@@ -227,10 +242,12 @@ class TcaUtility
 
 
 	/**
-	 * @param string $table
-	 * @param string $column 
-	 * @param null|string $type type to respect column overrides
-	 * @return null|array 
+	 * Returns the TCA field configuration from a table column.
+	 * 
+	 * @param string $table The table name.
+	 * @param string $column The column name.
+	 * @param null|string $type The type to respect column overrides.
+	 * @return null|array The field configuration or "null" when no field configuration is found.
 	 */
 	public static function getFieldConfig(string $table, string $column, ?string $type = null): ?array
 	{
@@ -238,15 +255,16 @@ class TcaUtility
 	}
 
 	/**
-	 * converts a TCA item array to a keybased List
+	 * Converts a TCA item array to a key-based list.
+	 * 
 	 * example:
 	 * [['LLL:.../locallang.xlf:creation', 'uid'], ['LLL:.../locallang.xlf:backendsorting', 'sorting']]
 	 * becomes
-	 * ['uid' => ['label' => 'LLL:.../locallang.xlf:creation', 'icon' => null], 'sorting' => 'label' => 'LLL:.../locallang.xlf:backendsorting', 'icon' => null]]
+	 * ['uid' => ['label' => 'LLL:.../locallang.xlf:creation', 'icon' => null], 'sorting' => ['label' => 'LLL:.../locallang.xlf:backendsorting', 'icon' => null]]
 	 * 
 	 * 
-	 * @param array $items 
-	 * @return array 
+	 * @param array $items TCA item array.
+	 * @return array Key-based list.
 	 */
 	public static function remapItemArrayToKeybasedList(array $items): array
 	{
@@ -261,21 +279,21 @@ class TcaUtility
 	}
 
 	/**
-	 * Load the Backendlabel of an selected item
+	 * Load the backend label from a selected item.
 	 *
-	 * @param string $value
-	 * @param string $column
-	 * @param string $table
-	 * @param null|string $type
-	 * @param boolean $localize if false return the raw valiue, otherwise return the translated value
-	 * @return string|null
+	 * @param string $value The selected item. F.e ['LLL:.../locallang.xlf:backendsorting', 'sorting']
+	 * @param string $column Column name which contains the selected item.
+	 * @param string $table The table name.
+	 * @param null|string $type The type to respect column overrides.
+	 * @param boolean $localize If false return the raw value, otherwise return the translated value.
+	 * @return string|null The label.
 	 */
 	public static function getLabelOfSelectedItem(string $value, string $column, string $table, ?string $type = null, bool $localize = true): ?string
 	{
 		$items = static::getFieldConfig($table, $column, $type)['items'] ?? [];
 		$items = static::remapItemArrayToKeybasedList($items);
 		$result = $items[$value]['value'];
-		if($localize) {
+		if ($localize) {
 			$result = LocalizationUtility::localize((string) $result);
 		}
 		return htmlspecialchars($result);
@@ -283,14 +301,16 @@ class TcaUtility
 
 
 	/**
-	 * returns the TCA language fields of a table or null, if not set
-	 * @param mixed $table 
-	 * @return null|array 
+	 * Returns the TCA language fields from a table or null, if not set.
+	 * 
+	 * @param string $table The table name.
+	 * @return null|array TCA language fields from a table or null, if not set.
 	 */
-	public static function getL10nConfig($table): ?array {
+	public static function getL10nConfig(string $table): ?array
+	{
 		$tableDefinition = static::getTca()[$table];
 		$l10nEnabled = $tableDefinition['ctrl']['languageField'] && $tableDefinition['ctrl']['transOrigPointerField'];
-		if(!$l10nEnabled) {
+		if (!$l10nEnabled) {
 			return null;
 		}
 
@@ -301,7 +321,11 @@ class TcaUtility
 	}
 
 
-	/** @return array  */
+	/**
+	 * Returns the current TCA.
+	 * 
+	 * @return array The TCA.
+	 */
 	public static function getTca(): array
 	{
 		return $GLOBALS['TCA'];

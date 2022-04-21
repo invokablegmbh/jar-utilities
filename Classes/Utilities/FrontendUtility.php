@@ -16,13 +16,16 @@ use TYPO3\CMS\Core\Context\Context;
 
 /** 
  * @package Jar\Utilities\Utilities 
- * Utility Class for FrontendUtility Tasks
+ * Get Informations about the current Frontend.
  **/
 
 class FrontendUtility
 {
 
-	/** @return int  */
+	/** 
+	 * Returns the current Page UID.
+	 * @return int The current Page UID
+	 */
 	public static function getCurrentPageUid(): int
 	{
 		return (int) $GLOBALS['TSFE']->id;
@@ -30,7 +33,8 @@ class FrontendUtility
 
 
 	/**
-	 * @return int 
+	 * Returns the current active language ID.
+	 * @return int The current active language ID.
 	 */
 	public static function getCurrentLanguageId(): int
 	{

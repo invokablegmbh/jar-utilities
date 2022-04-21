@@ -34,7 +34,8 @@ use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 
 /** 
  * @package Jar\Utilities\Services 
- * Service Class for Converting complex objects to a simple Array structure based of TCA Configuration
+ * Service class for converting complex objects to a simple array structure based of TCA configuration.
+ * Handy for faster "backend to frontend" development, headless systems and ajax calls.
  **/
 
 class ReflectionService
@@ -54,6 +55,8 @@ class ReflectionService
 
 	/**
 	 * List of columns that are generally not processed
+	 * This blacklist will be applied to every table.
+	 * You can use wildcards like "?" or "*".
 	 * @var array
 	 */
 	private array $columnBlacklist = [
@@ -98,13 +101,25 @@ class ReflectionService
 	private bool $debug = false;
 
 	/**
-	 * Remap Columnnames in reflected result
+	 * Remap Columnnames in reflected result.
 	 * f.e. 'tt_content' => ['table_caption' => 'heading'] converts 'tt_content->table_caption' to 'tt_content->heading'
-	 * Important: takes action AFTER replacement of ColumnNames! Keep that in mind
+	 * Important: takes action AFTER replacement of ColumnNames! Keep that in mind.
 	 * @var array
 	 */
 	private array $tableColumnRemapping = [];
 
+	/**
+	 * Reflects a list of record rows.
+	 * 
+	 * @param array $rows The record list.
+	 * @param string $table The tablename.
+	 * @param int $maxDepth The maximum depth at which related elements are loaded (default is 8).
+	 * @return array Reflected result.
+	 * @throws InvalidArgumentException 
+	 * @throws RuntimeException 
+	 * @throws TooDirtyException 
+	 * @throws ReflectionException 
+	 */
 	public function buildArrayByRows(array $rows, string $table, int $maxDepth = 8): array
 	{
 		$result = [];
@@ -116,9 +131,11 @@ class ReflectionService
 
 
 	/**
-	 * @param array $row 
-	 * @param string $table 
-	 * @param int $maxDepth 
+	 * Reflects a single record row.
+	 * 
+	 * @param array $row The record row.
+	 * @param string $table The tablename.
+	 * @param int $maxDepth The maximum depth at which related elements are loaded (default is 8).
 	 * @return null|array 
 	 * @throws InvalidArgumentException 
 	 * @throws RuntimeException 
@@ -453,7 +470,8 @@ class ReflectionService
 	}
 
 	/**
-	 * @param array $configuration 
+	 * Sets multiple properties in one call.
+	 * @param array $configuration Configuration settings.
 	 * @return ReflectionService 
 	 */
 	public function setPropertiesByConfigurationArray(array $configuration): self
@@ -516,10 +534,10 @@ class ReflectionService
 	}
 
 	/**
-	 * Set list of columns that are generally not processed
+	 * Set list of columns that are generally not processed.	 
 	 *
-	 * @param  array  $columnBlacklist  List of columns that are generally not processed
-	 * @return  self
+	 * @param  array  $columnBlacklist  List of columns that are generally not processed.
+	 * @return self
 	 */
 	public function setColumnBlacklist(array $columnBlacklist)
 	{
@@ -537,18 +555,6 @@ class ReflectionService
 	}
 
 	/**
-	 * Set the value of arrayBuildingConfiguration
-	 *
-	 * @return  self
-	 */
-	public function setArrayBuildingConfiguration($arrayBuildingConfiguration)
-	{
-		$this->buildingConfiguration = $arrayBuildingConfiguration;
-
-		return $this;
-	}
-
-	/**
 	 * Get list of table specific columns which aren't processed
 	 *
 	 * @return  array
@@ -559,7 +565,7 @@ class ReflectionService
 	}
 
 	/**
-	 * Set list of table specific columns which aren't processed
+	 * Set list of table specific columns which aren't processed.
 	 *
 	 * @param  array  $tableColumnBlacklist  List of table specific columns which aren't processed
 	 *
@@ -595,7 +601,7 @@ class ReflectionService
 	}
 
 	/**
-	 * Set List of tables columns which should be processed exclusively
+	 * Set List of tables columns which should be processed exclusively.
 	 *
 	 * @param  array  $tableColumnWhitelist  List of tables columns which should be processed exclusively
 	 *
@@ -619,9 +625,9 @@ class ReflectionService
 	}
 
 	/**
-	 * Set wildcard based Replacement for Column names
+	 * Set wildcard based replacement for column names.
 	 *
-	 * @param  array  $tableColumnRemoveablePrefixes  Wildcard based Replacement for Column names
+	 * @param  array  $tableColumnRemoveablePrefixes  Wildcard based replacement for column names.
 	 *
 	 * @return  self
 	 */
@@ -643,9 +649,9 @@ class ReflectionService
 	}
 
 	/**
-	 * Set remap Columnnames in reflected result
+	 *  Set remap column-names in reflected result.
 	 *
-	 * @param  array  $tableColumnRemapping  Remap Columnnames in reflected result
+	 * @param  array  $tableColumnRemapping  Remapping definition list.
 	 *
 	 * @return  self
 	 */
