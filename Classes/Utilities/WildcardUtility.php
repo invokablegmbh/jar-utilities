@@ -19,8 +19,8 @@ define('FNM_CASEFOLD', 16);
 
 /** 
  * @package Jar\Utilities\Utilities 
- * Utility Class for handling wildcard opertations like "b?a_*"
- * Based on me@rowanlewis.com from https://www.php.net/manual/de/function.fnmatch.php
+ * Utility Class for handling wildcard opertations like "b?a_*". Alternative to PHP "fnmatch" which isn't preset on all systems.
+ * Based on me@rowanlewis.com answer from https://www.php.net/manual/de/function.fnmatch.php
  **/
 
 class WildcardUtility
@@ -29,10 +29,10 @@ class WildcardUtility
 	/**
 	 * Matches a string against a whole list of patterns, returns "true" on first match
 	 * 
-	 * @param array $patterns 
-	 * @param string $string 
-	 * @param int $flags 
-	 * @return bool 
+	 * @param array $patterns List of patterns like ['b?a_*', 'plupp_*']
+	 * @param string $string The string to match.
+	 * @param int $flags Flags ("FNM_PATHNAME" or 1, "FNM_NOESCAPE" or 2, "FNM_PERIOD" or 4, "FNM_CASEFOLD" or 16) based on https://www.php.net/manual/en/function.fnmatch.php#refsect1-function.fnmatch-parameters
+	 * @return bool Returns "true" on first match, otherwise false.
 	 */
 	public static function matchAgainstPatternList(array $patterns, string $string, int $flags = 0): bool
 	{
@@ -44,19 +44,20 @@ class WildcardUtility
 		}
 		return false;
 	}
-	
+
 
 	/**
-	 * Simple wildcard matching, matches "hello*world"
-	 * "hello beatiful world": true
-	 * "hello happy planet": false
+	 * Simple wildcard which matches a string against a pattern. Wildcards like * or ? are useable.
 	 * 
-	 * Wildcards like * or ? are useable
-	 * 
-	 * @param string $pattern 
-	 * @param string $string 
-	 * @param int $flags 
-	 * @return bool 
+	 * Example:
+	 * Pattern: "hello*world"
+	 * Match: "hello beatiful world" -> true
+	 * Match: "hello happy planet" -> false
+	 *  
+	 * @param string $pattern The Pattern like "hello*world"
+	 * @param string $string The string to match.
+	 * @param int $flags Flags ("FNM_PATHNAME" or 1, "FNM_NOESCAPE" or 2, "FNM_PERIOD" or 4, "FNM_CASEFOLD" or 16) based on https://www.php.net/manual/en/function.fnmatch.php#refsect1-function.fnmatch-parameters
+	 * @return bool Returns "true" on match, otherwise false.
 	 */
 	public static function match(string $pattern, string $string, int $flags = 0): bool
 	{

@@ -17,16 +17,17 @@ use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 
 /** 
  * @package Jar\Utilities\Utilities 
+ * Load and render content elements.
  **/
 
 class ContentUtility
 {
 
 	/**
-	 * Render the output of a Content Element
-	 * @param string $uid
+	 * Render the frontend output of a content element.
+	 * @param string $uid The content element uid.
 	 * @throws Exception
-	 * @return string
+	 * @return string The rendered markup.
 	 */
 	public static function renderElement($uid = null)
 	{

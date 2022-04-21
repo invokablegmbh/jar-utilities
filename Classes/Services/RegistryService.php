@@ -23,53 +23,57 @@ class RegistryService  implements \TYPO3\CMS\Core\SingletonInterface
 	/**
 	 * @var array
 	 */
-	protected array $entries = [];
+	protected array $store = [];
 
 
 
 	/**
-	 * @param string $entryName 
-	 * @param string $key 
-	 * @param mixed $value 
+	 * Put a item in a store.
+	 * 
+	 * @param string $storeName Name of the store.
+	 * @param string $key Key of the item.
+	 * @param mixed $value Value of the item.
 	 * @TODO: Add Mixed parameter declaration in PHP 8
 	 * @return RegistryService 
 	 */
-	public function set(string $entryName, string $key, $value): RegistryService
+	public function set(string $storeName, string $key, $value): RegistryService
 	{
-		if (!is_array($this->entries[$entryName])) {
-			$this->entries[$entryName] = [];
+		if (!is_array($this->store[$storeName])) {
+			$this->store[$storeName] = [];
 		}
 
-		$this->entries[$entryName][$key] = $value;
+		$this->store[$storeName][$key] = $value;
 
 		return $this;
 	}
 
 
 	/**
-	 * @param string $entryName
+	 * Returns a value out of a store.
+	 * @param string $storeName
 	 * @param string $key	
 	 * @throws Exception
 	 * @return \mixed 
 	 * @TODO: Add Mixed return value in PHP 8
 	 */
-	public function get(string $entryName, string $key)
+	public function get(string $storeName, string $key)
 	{
-		if(empty($this->entries[$entryName][$key])) {
+		if(empty($this->store[$storeName][$key])) {
 			return false;
 		}
-		return $this->entries[$entryName][$key];
+		return $this->store[$storeName][$key];
 	}
 
 
 
 	/**
-	 * @param string $entryName	 
+	 * Returns the whole content of a store
+	 * @param string $storeName	 
 	 * @throws Exception
 	 * @return array
 	 */
-	public function getWholeEntry(string $entryName): array
+	public function getWholeStore(string $storeName): array
 	{
-		return $this->entries[$entryName];
+		return $this->store[$storeName];
 	}
 }

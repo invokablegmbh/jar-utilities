@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Jar\Utilities\Utilities;
 
+use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
+
 /*
  * This file is part of the JAR/Utilities project under GPLv2 or later.
  *
@@ -14,14 +16,16 @@ namespace Jar\Utilities\Utilities;
 
 /** 
  * @package Jar\Utilities\Utilities 
- * Utility Class for working with numbers
+ * Utility Class for working with numbers.
  **/
 
 class NumberUtility
 {
-	/**     
-	 * @param mixed $val
-	 * @return bool
+	/**
+	 * Checks if the value represents a whole number (integer).
+	 * 
+	 * @param mixed $val The value to check.
+	 * @return bool "True" if is a whole number else return "false".
 	 */
 	public static function isWholeInt($val): bool
 	{
@@ -31,7 +35,7 @@ class NumberUtility
 		if (ctype_digit($val)) {
 			if ($val === (string)0)
 				return true;
-			elseif (ltrim($val, '0') === $val)
+			elseif (ltrim($val, '0') == $val)
 				return true;
 		}
 

@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace Jar\Utilities\Utilities;
 
-use TYPO3\CMS\Core\Cache\CacheManager;
 use TYPO3\CMS\Core\Localization\LanguageService;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 use TYPO3\CMS\Extbase\Utility\LocalizationUtility as CoreLocalizationUtility;
 
 /*
@@ -19,14 +17,17 @@ use TYPO3\CMS\Extbase\Utility\LocalizationUtility as CoreLocalizationUtility;
 
 
 /** 
- * @package Jar\Utilities\Utilities 
+ * @package Jar\Utilities\Utilities
+ * Shorthands for receiving and output translations. 
  **/
 
 class LocalizationUtility
 {
     /**
-     * @param string $extension
-     * @param string $keys
+     * Loads the translations, set by _LOCAL_LANG from a extension.
+     * 
+     * @param string $extension Extension Key without the beginnining "tx_"
+     * @return array The translations.     
      * @throws Exception
      */
     public static function loadTyposcriptTranslations(string $extension): array
@@ -47,7 +48,9 @@ class LocalizationUtility
 
 
     /**
-     * @return LanguageService
+     * Get the current Language Service.
+     * 
+     * @return LanguageService The language Service.
      */
     public static function getLanguageService(): LanguageService
     {
@@ -55,11 +58,12 @@ class LocalizationUtility
     }
 
     /**
-     * @param string $input 
-     * @param bool $withFallback returns the original $input when no translation is found
-     * @return void 
+     * Localize a translation key to the translation value.
+     * 
+     * @param string $input The translation key.
+     * @return string The translation value or the translation key, when no translation is found.
      */
-    public static function localize(string $input, bool $withFallback = true) {
+    public static function localize(string $input): string {
         return self::getLanguageService()->sL($input) ?? $input;
     }
 }

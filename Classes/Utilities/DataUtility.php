@@ -17,16 +17,17 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 
 /** 
- * @package Jar\Utilities\Utilities 
+ * @package Jar\Utilities\Utilities
+ * Doing database related stuff.
  **/
 
 class DataUtility
 {
 	/**
-	 * Shorthand if you just want to load one item from a table
-	 * @param string $table 
-	 * @param int $uid 
-	 * @return array 
+	 * Load one record from a table.
+	 * @param string $table The table name.
+	 * @param int $uid The record uid.
+	 * @return array The resulting row.
 	 * @throws InvalidArgumentException 
 	 */
 	public static function getRow(string $table, int $uid): array

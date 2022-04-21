@@ -18,7 +18,7 @@ use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 
 /** 
  * @package Jar\Utilities\Utilities 
- * Utility Class for handle ... strings
+ * Collection of string helpers.
  **/
 
 class StringUtility
@@ -26,9 +26,11 @@ class StringUtility
 
 
 	/**
-	 * @param string $value 
-	 * @param int $maxCharacters 
-	 * @return string 
+	 * Crops a string.
+	 * 
+	 * @param string $value The string to crop.
+	 * @param int $maxCharacters Length of cropping.
+	 * @return string The cropped string.
 	 * @throws InvalidArgumentException 
 	 */
 	public static function crop(string $value, int $maxCharacters = 150): string
@@ -40,9 +42,10 @@ class StringUtility
 
 
 	/**
-	 * Same as "strip_tags" but leaves spaces at the position of removed tags
-	 * @param string $string
-	 * @return string
+	 * Same as "strip_tags" but leaves spaces at the position of removed tags.
+	 * 
+	 * @param string $string The string to strip.
+	 * @return string The stripped string.
 	 */
 	public static function ripTags($string): string
 	{
@@ -56,11 +59,13 @@ class StringUtility
 
 
 	/**
-	 * @param string $string
-	 * @param bool $toLowerCase
-	 * @return string
+	 * Simple sanitizing of strings, no complex handling of umlauts like "äöü".
+	 * 
+	 * @param string $string The string to sanitize.
+	 * @param bool $toLowerCase Activate transform to lower case.
+	 * @return string The sanitized string.
 	 */
-	public static function fastSanitize($string, $toLowerCase = false): string
+	public static function fastSanitize($string, $toLowerCase = true): string
 	{
 		if ($toLowerCase) {
 			$string = strtolower($string);
@@ -72,11 +77,14 @@ class StringUtility
 	}
 
 	/**
+	 * More complex sanitizing of strings, also handles of umlauts like "äöü".
 	 * based on the VHS Extension (https://github.com/FluidTYPO3/vhs)
-	 * @param string $string
-	 * @return string
+	 * 
+	 * @param string $string The string to sanitize.
+	 * @param bool $toLowerCase Activate transform to lower case.
+	 * @return string The sanitized string.
 	 */
-	public static function sanitize($string): string
+	public static function sanitize($string, $toLowerCase = true): string
 	{
 		$characterMap = [
 			'¹' => 1, '²' => 2, '³' => 3, '°' => 0, '€' => 'eur', 'æ' => 'ae', 'ǽ' => 'ae', 'À' => 'A',
@@ -144,8 +152,10 @@ class StringUtility
 		$specialCharsSearch = array_keys($characterMap);
 		$specialCharsReplace = array_values($characterMap);
 		$string = str_replace($specialCharsSearch, $specialCharsReplace, $string);
-		$string = strtolower($string);
-		$pattern = '/([^a-z0-9]){1,}/';
+		if($toLowerCase) {
+			$string = strtolower($string);
+		}
+		$pattern = '/([^A-Za-z0-9]){1,}/';
 		$string = preg_replace($pattern, '_', $string);
 		return trim($string, '_');
 	}

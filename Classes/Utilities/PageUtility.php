@@ -16,16 +16,18 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 
 /** 
- * @package Jar\Utilities\Utilities 
+ * @package Jar\Utilities\Utilities
+ * Doing Page (and Pagetree) related stuff.
  **/
 
 class PageUtility
 {
     /**
-     * returns all Sub-Pids of certain PIDs
-     * @param string $pids 
-     * @param int $level 
-     * @return array 
+     * Returns all Sub-Pids of certain PIDs.
+     * 
+     * @param string $pids The starting PID.
+     * @param int $level Depth of the traversing levels.
+     * @return array List of matching PIDs.
      * @throws InvalidArgumentException 
      */
     public static function getPidsRecursive(string $pids, int $level = 3): array
@@ -43,11 +45,12 @@ class PageUtility
 
 
     /**
-     * Slides up a the Pagetree and return the nearest filled value of $fieldname
-     * @param string $fieldname 
-     * @return string 
+     * Slides up a the Pagetree and return the nearest filled value of the field.
+     * 
+     * @param string $fieldname Name of the field/column.
+     * @return string|null Value of the field when found, otherwise "null".
      */
-    public static function getPageFieldSlided(string $fieldname): string
+    public static function getPageFieldSlided(string $fieldname): ?string
     {
         return reset(IteratorUtility::compact(IteratorUtility::pluck($GLOBALS['TSFE']->rootLine, $fieldname)));
     }

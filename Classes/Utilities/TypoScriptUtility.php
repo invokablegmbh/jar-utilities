@@ -21,16 +21,21 @@ use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
  * LICENSE.md file that was distributed with this source code.
  */
 
-/** @package Jar\Utilities\Utilities */
+/** 
+ * @package Jar\Utilities\Utilities
+ * Load and progress faster with TypoScript.
+ */
+
+
 class TypoScriptUtility
 {
 	/**
 	 * Loads current TypoScript like TypoScriptUtility::get('plugin.tx_jarfeditor.settings')
 	 * 
-	 * @param string|null $path Dot notated TypoScript Path
-	 * @param int|null $pageUid PageUid from which page the TypoScript should be loaded (optional in Frontend)
-	 * @param bool $populated should the Data be populated (f.e. "element = TEXT / element.value = Bla" => "element = Bla")
-	 * @return array 
+	 * @param string|null $path Dot notated TypoScript path.
+	 * @param int|null $pageUid PageUid from which page the TypoScript should be loaded (optional in Frontend).
+	 * @param bool $populated should the Data be populated (f.e. "element = TEXT / element.value = Bla" => "element = Bla").
+	 * @return array The plain TypoScript array.
 	 * @throws InvalidArgumentException
 	 */
 	public static function get(string $path = null, int $pageUid = null, bool $populated = false): array
@@ -120,8 +125,8 @@ class TypoScriptUtility
 	/**
 	 * Wrapper for the Core convertTypoScriptArrayToPlainArray
 	 * 
-	 * @param array $typoscriptArray 
-	 * @return null|array 
+	 * @param array $typoscriptArray A TypoScript array.
+	 * @return null|array The plain TypoScript array or "null" when not found.
 	 * @throws InvalidArgumentException 
 	 */
 	public static function convertTypoScriptArrayToPlainArray(?array $typoscriptArray): array
@@ -147,9 +152,9 @@ class TypoScriptUtility
 	 * 	element = Bla
 	 *  tree.value = Blupp
 	 * 
-	 * @param array $conf 
-	 * @param null|ContentObjectRenderer $cObj
-	 * @return array 
+	 * @param array $conf Plain TypoScript array.
+	 * @param null|ContentObjectRenderer $cObj ContentObject which should be used.
+	 * @return array The plain populated TypoScript array.
 	 * @throws InvalidArgumentException 
 	 */
 	public static function populateTypoScriptConfiguration(array $conf, ?ContentObjectRenderer $cObj = null): array

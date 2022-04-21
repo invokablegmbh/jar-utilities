@@ -20,6 +20,7 @@ use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 
 /** 
  * @package Jar\Utilities\Utilities 
+ * Load informations from TYPO3 extensions.
  **/
 
 
@@ -27,9 +28,10 @@ class ExtensionUtility
 {
 
 	/**
-	 * @param string $extkey 
+	 * Loads the configuration from a extension.
+	 * @param string $extkey The extension key.
 	 * @throws Exception
-	 * @return array
+	 * @return array The extension configuration.
 	 */
 	public static function getExtensionConfiguration(string $extkey): array
 	{
@@ -47,9 +49,10 @@ class ExtensionUtility
 
 
 	/**
-	 * @param string $extkey 
-	 * @param string $path 
-	 * @return string 
+	 * Get the absolute path to a extension.
+	 * @param string $extkey The extension key.
+	 * @param string $path Optional path in extension directory.
+	 * @return string The absolute path.
 	 * @throws BadFunctionCallException 
 	 */
 	public static function getAbsExtPath(string $extkey, string $path): string
@@ -65,7 +68,7 @@ class ExtensionUtility
 	 * @param string $qualifiedExtensionName
 	 * @return string
 	 */
-	public static function getExtensionKey(string $qualifiedExtensionName): string
+	protected static function getExtensionKey(string $qualifiedExtensionName): string
 	{
 		list(, $extensionKey) = static::getVendorNameAndExtensionKey($qualifiedExtensionName);
 		return $extensionKey;
@@ -76,7 +79,7 @@ class ExtensionUtility
 	 * @param string $qualifiedExtensionName
 	 * @return array
 	 */
-	public static function getVendorNameAndExtensionKey(string $qualifiedExtensionName): array
+	protected static function getVendorNameAndExtensionKey(string $qualifiedExtensionName): array
 	{
 		static $cache = [];
 		if (isset($cache[$qualifiedExtensionName])) {
@@ -98,7 +101,7 @@ class ExtensionUtility
 	 * @param string $qualifiedExtensionName
 	 * @return bool
 	 */
-	public static function hasVendorName(string $qualifiedExtensionName): bool
+	protected static function hasVendorName(string $qualifiedExtensionName): bool
 	{
 		return false !== strpos($qualifiedExtensionName, '.');
 	}

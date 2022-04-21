@@ -25,8 +25,9 @@ use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 class FormatUtility
 {
 	/**
-	 * @param string $params 
-	 * @return null|array
+	 * Converts t3link parameters to a list of ready-to-use link informations.
+	 * @param string $params T3link parameters.
+	 * @return null|array Link informations or null when failed.
 	 */
 	public static function buildLinkArray(?string $params): ?array
 	{
@@ -68,7 +69,7 @@ class FormatUtility
 
 		return array(
 			'url' => $origUrl,
-			'original_url' => $url,
+			'base' => $url,
 			'params' => $addParams,
 			'target' => $target,
 			'text' => $text,
@@ -80,8 +81,9 @@ class FormatUtility
 
 
 	/**
-	 * @param int $time 
-	 * @return null|array 
+	 * Build time information for a stored time. 
+	 * @param int $time Time in seconds.
+	 * @return null|array Time informations or null when failed.
 	 */
 	public static function buildTimeArray(int $time): ?array
 	{
@@ -96,9 +98,11 @@ class FormatUtility
 	}
 
 	/**
-	 * @param string $date 
-	 * @return null|array 
+	 * Build date informations from a date string.
+	 * @param string $date Date string.
+	 * @return null|array Date informations or null when failed.
 	 */
+
 	public static function buildDateTimeArrayFromString(string $date): ?array
 	{
 		if (empty($date)) {
@@ -113,8 +117,9 @@ class FormatUtility
 	}
 
 	/**
-	 * @param \DateTime $date 
-	 * @return null|array 
+	 * Build date informations from a DateTime object.
+	 * @param \DateTime $date DateTime object.
+	 * @return null|array Date informations or null when failed.
 	 */
 	public static function buildDateTimeArray(\DateTime $date): ?array
 	{
@@ -153,8 +158,9 @@ class FormatUtility
 
 
 	/**
-	 * @param string $value 
-	 * @return string 
+	 * Compiles rich-text to the final markup.
+	 * @param string $value The rich-text.
+	 * @return string The final markup.
 	 * @throws InvalidArgumentException 
 	 */
 	public static  function renderRteContent(string $value): string

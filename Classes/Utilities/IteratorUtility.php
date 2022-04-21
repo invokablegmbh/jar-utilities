@@ -16,16 +16,18 @@ use Closure;
 
 /** 
  * @package Jar\Utilities\Utilities 
- * 
+ * Helpers for handling and iterating throught lists.
  **/
 
 class IteratorUtility
 {
 
     /**
-     * @param array $arr 
-     * @param string $col 
-     * @param int $dir 
+     * Sort array by column/key value.
+     * 
+     * @param array $arr Reference of array.
+     * @param string $col The column/key name.
+     * @param int $dir The direction SORT_ASC or SORT_DESC 
      * @return void 
      */
     public static function sortArrayByColumn(array &$arr, string $col, int $dir = SORT_ASC): void
@@ -39,9 +41,11 @@ class IteratorUtility
 
 
     /**
-     * @param array $listOfObjects 
-     * @param string $methodName 
-     * @return array 
+     * Extracts properties from objects via their get method.
+     * 
+     * @param array $listOfObjects List of objects.
+     * @param string $methodName The name of the method, without the beginning 'get'.
+     * @return array Extracted values.
      */
     public static function extractValuesViaGetMethod(array $listOfObjects, string $methodName): array
     {
@@ -60,10 +64,12 @@ class IteratorUtility
     }
 
     /**
-     * @param array $listOfObjects 
-     * @param string $methodName 
-     * @param bool $keepKeys 
-     * @return array 
+     *  Extracts properties from objects via their get method and flattens the result.
+     * 
+     * @param array  $listOfObjects List of objects.
+     * @param string $methodName The name of the method, without the beginning 'get'.
+     * @param bool $keepKeys Keep keys in result. Will overwrite existing values for this key.
+     * @return array Extracted flattened values.
      */
     public static function extractValuesViaGetMethodFlattened(array $listOfObjects, string $methodName, bool $keepKeys = false): array
     {
@@ -78,9 +84,11 @@ class IteratorUtility
     }
 
     /**
-     * @param array $listOfObjects 
-     * @param string $method 
-     * @return array 
+     * Calls a method in each object and returns the results.
+     * 
+     * @param array $listOfObjects List of objects.
+     * @param string $method name of the method.
+     * @return array List of method results.
      */
     public static function callMethod(array $listOfObjects, string $method): array
     {
@@ -97,8 +105,9 @@ class IteratorUtility
 
 
     /**
-     * @param null|array $arr 
-     * @return array 
+     * Returns a copy of the list with all falsy values (null, 0, '') removed. 
+     * @param null|array $arr List with values.
+     * @return array List without falsy values
      */
     public static function compact(?array $arr): array
     {
@@ -107,8 +116,10 @@ class IteratorUtility
 
 
     /**
-     * @param array $arr 
-     * @return array 
+     * Flattens a nested array.
+     * 
+     * @param array $arr The nested array.
+     * @return array The flat array.
      */
     public static function flatten(array $arr): array
     {
@@ -124,9 +135,11 @@ class IteratorUtility
     }
 
     /**
-     * @param array $arr 
-     * @param callable $func 
-     * @return array 
+     * Filters a list with a condition function
+     * 
+     * @param array $arr The array.
+     * @param callable $func The filter closure.
+     * @return array The filtered result.
      */
     public static function filter(array $arr, callable $func): array
     {
@@ -141,9 +154,11 @@ class IteratorUtility
 
 
     /**
-     * @param array $arr 
-     * @param callable $func 
-     * @return array 
+     * Iterates each item and maps the new value throught a function.
+     * 
+     * @param array $arr The array.
+     * @param callable $func The transformation function (receives three parametes: 1. value, 2. key, 3. current transformated list).
+     * @return array The mapped array.
      */
     public static function map(array $arr, callable $func): array
     {
@@ -156,19 +171,21 @@ class IteratorUtility
 
 
     /**
-     * @param array $arr 
-     * @return array 
+     * Returns the first element from a list.
+     * @param array $arr The array.
+     * @return mixed First element.
      */
-    public static function first(array $arr): array
+    public static function first(array $arr)
     {
         return reset($arr);
     }
 
 
     /**
-     * @param array $arr 
-     * @param string $key 
-     * @return array 
+     * Extracts a the value of a certain key.
+     * @param array $arr The array.
+     * @param string $key The key.
+     * @return array The extracted values.
      */
     public static function pluck(array $arr, string $key): array
     {
@@ -177,9 +194,11 @@ class IteratorUtility
 
 
     /**
-     * @param array $arr 
-     * @param string $needle 
-     * @return bool 
+     * Checks if a value exist in an array.
+     * 
+     * @param array $arr The array.
+     * @param string $needle The value to check.
+     * @return bool Check result.
      */
     public static function contains(array $arr, string $needle): bool
     {
@@ -187,11 +206,11 @@ class IteratorUtility
     }
 
     /**
-     * Returns only array entries listed in a whitelist
+     * Returns only array entries listed in a whitelist.
      *
-     * @param array $array original array to operate on
-     * @param array $whitelist keys you want to keep
-     * @return array
+     * @param array $array Original array to operate on.
+     * @param array $whitelist Keys you want to keep.
+     * @return array The whitelisted entries.
      */
     public static function whitelist(array $array, array $whitelist): array
     {
@@ -202,11 +221,11 @@ class IteratorUtility
     }
 
     /**
-     * Returns only array entries listed in a whitelist
+     * Returns only nested array entries listed in a whitelist.
      *
-     * @param array $array List of array items
+     * @param array $array List of nested array items
      * @param array $whitelist keys you want to keep
-     * @return array
+     * @return array The whitelisted entries.
      */
     public static function whitelistList(array $array, array $whitelist): array
     {
@@ -217,10 +236,11 @@ class IteratorUtility
 
 
     /**
-     *
-     * @param array $array List of array items
-     * @param string $whitelist keys you want to keep
-     * @return array
+     * Create a indexed list based on key values.
+     * 
+     * @param array $array The array.
+     * @param string $key The index key name.
+     * @return array The indexed List.
      */
     public static function indexBy(array $arr, string $key): array
     {
