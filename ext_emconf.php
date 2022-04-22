@@ -2,7 +2,7 @@
 
 $EM_CONF['jar_utilities'] = array(
 	'title' => 'JAR Utilities',
-	'description' => 'Utility classes that simplify TYPO3 development',
+	'description' => 'Utility classes that simplify TYPO3 development.',
 	'category' => 'plugin',
 	'author' => 'invokable GmbH',
 	'author_email' => 'info@invokable.gmbh',
