@@ -105,4 +105,22 @@ class ExtensionUtility
 	{
 		return false !== strpos($qualifiedExtensionName, '.');
 	}
+
+	/**
+	 * Retrieves the version of an installed extension.
+	 * If the extension is not installed, this function returns an empty string.
+	 * Same as ExtensionManagementUtility::getExtensionVersion but removes trailing "v".
+	 * Handy when using version_compare.
+	 *
+	 * @param string $extkey The extension key.
+	 * @return string The extension version as a string in the format "x.y.z".
+	 */
+	public static function getExtensionVersion(string $extkey): string
+	{
+		$result = strtolower(ExtensionManagementUtility::getExtensionVersion($extkey));
+		if(strpos($result, 'v') === 0) {
+			$result = substr($result, 1);
+		}
+		return $result;
+	}
 }
