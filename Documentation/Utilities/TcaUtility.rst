@@ -133,13 +133,14 @@ Utility Class for working faster with the TCA.
 
 ------------------------------------
 
-.. php:method:: mapStringListToColumns($list, $table = null)
+.. php:method:: mapStringListToColumns($list, $table = null, $extendedList = false)
 
    Converts a comma-separated list of TCA Columns (a,b,c) to [a,b,c]. Also columns of containing pallets will be resolved (if parameter table is available).
 
    :param string $list: Comma-separated list of TCA Columns.
    :param string $table: The table name.
-   :returns: List of column names.
+   :param bool $extendedList: Flag for returning extendedList.
+   :returns: List of column names or list of [column name | label] when $extendedList is active.
 
 ------------------------------------
 

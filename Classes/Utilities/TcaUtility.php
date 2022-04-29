@@ -187,9 +187,10 @@ class TcaUtility
 	 * 
 	 * @param string $list Comma-separated list of TCA Columns.
 	 * @param string $table The table name.
-	 * @return array List of column names.
+	 * @param bool $extendedList Flag for returning extendedList.
+	 * @return array List of column names or list of [column name | label] when $extendedList is active.
 	 */
-	public static function mapStringListToColumns(string $list, string $table = null): array
+	public static function mapStringListToColumns(string $list, string $table = null, bool $extendedList = false): array
 	{
 		$result = [];
 		$tca = self::getTca();
@@ -200,7 +201,7 @@ class TcaUtility
 			if (strpos($column, '--palette--;') === 0) {
 				$palette = $tca[$table]['palettes'][end(GeneralUtility::trimExplode(';', $column))];
 				if (!empty($palette)) {
-					foreach (self::mapStringListToColumns($palette['showitem'], $table) as $paletteColumn) {
+					foreach (self::mapStringListToColumns($palette['showitem'], $table, $extendedList) as $paletteColumn) {
 						$result[] = $paletteColumn;
 					}
 				}
@@ -210,7 +211,12 @@ class TcaUtility
 			if (empty($column) || strpos($column, '--') === 0) {
 				continue;
 			}
-			$result[] = reset(explode(';', $column));
+			if (!$extendedList) {
+				$result[] = reset(explode(';', $column));
+			} else {
+				// also return the label field
+				$result[] = explode(';', $column, 2);
+			}
 		}
 		return $result;
 	}
@@ -235,6 +241,15 @@ class TcaUtility
 		}
 
 		if (!empty($type)) {
+			// label overrides via showitem properties
+			$indexedShowitemColumns = IteratorUtility::indexBy(self::mapStringListToColumns($tca[$table]['types'][$type]['showitem'] ?? '', $table, true), '0');
+			$showItemProperties = $indexedShowitemColumns[$column];
+
+			if(is_array($showItemProperties) && count($showItemProperties) > 1 && !empty($showItemProperties[1])) {
+				$definition['label'] = $showItemProperties[1];
+			}			
+
+			// column overrides
 			ArrayUtility::mergeRecursiveWithOverrule($definition, $tca[$table]['types'][$type]['columnsOverrides'][$column] ?? []);
 		}
 		return $definition;
