@@ -109,7 +109,7 @@ class FormatUtility
 			return null;
 		}
 
-		if($date === '0000-00-00 00:00:00') {
+		if($date === '0000-00-00 00:00:00' || $date === '0000-00-00') {
 			return null;
 		}	
 		
