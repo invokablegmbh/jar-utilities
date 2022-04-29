@@ -241,16 +241,15 @@ class TcaUtility
 		}
 
 		if (!empty($type)) {
+			// column overrides
+			ArrayUtility::mergeRecursiveWithOverrule($definition, $tca[$table]['types'][$type]['columnsOverrides'][$column] ?? []);
+
 			// label overrides via showitem properties
 			$indexedShowitemColumns = IteratorUtility::indexBy(self::mapStringListToColumns($tca[$table]['types'][$type]['showitem'] ?? '', $table, true), '0');
 			$showItemProperties = $indexedShowitemColumns[$column];
-
-			if(is_array($showItemProperties) && count($showItemProperties) > 1 && !empty($showItemProperties[1])) {
+			if (is_array($showItemProperties) && count($showItemProperties) > 1 && !empty($showItemProperties[1])) {
 				$definition['label'] = $showItemProperties[1];
-			}			
-
-			// column overrides
-			ArrayUtility::mergeRecursiveWithOverrule($definition, $tca[$table]['types'][$type]['columnsOverrides'][$column] ?? []);
+			}
 		}
 		return $definition;
 	}
