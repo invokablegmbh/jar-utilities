@@ -112,7 +112,7 @@ class TypoScriptUtility
 			$pageUid = reset($queryBuilder->execute());
 		}
 		$pageUid = intval($pageUid);
-		$rootLineUtility = GeneralUtility::makeInstance(RootlineUtility::class, [$pageUid]);
+		$rootLineUtility = GeneralUtility::makeInstance(RootlineUtility::class, $pageUid);
 		$TSObj = GeneralUtility::makeInstance(ExtendedTemplateService::class);
 		$TSObj->runThroughTemplates($rootLineUtility->get());
 		$TSObj->generateConfig();
