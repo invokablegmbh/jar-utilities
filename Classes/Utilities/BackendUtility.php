@@ -86,6 +86,9 @@ class BackendUtility
 	 * */
 	public static function currentPageUid(): int
 	{
+		if(strpos($GLOBALS['TYPO3_REQUEST']->getAttribute('route')->getOption('moduleName'), 'file_') !==  false) {
+			return null;
+		}
 
 		if (!empty(GeneralUtility::_GP('id'))) {
 			return (int) GeneralUtility::_GP('id');
