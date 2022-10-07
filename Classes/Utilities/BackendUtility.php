@@ -10,6 +10,7 @@ use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Backend\Utility\BackendUtility as BackendUtilityCore;
 use TYPO3\CMS\Backend\Routing\UriBuilder;
+use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\Type\Bitmask\Permission;
 
 /*
@@ -38,7 +39,10 @@ class BackendUtility
 	public static function createFrontendLink(int $pageUid = 1, array $params = []): string
 	{
 		if (empty($GLOBALS['TSFE'])) {
-			static::initFrontend();
+			$finder = GeneralUtility::makeInstance(SiteFinder::class);
+			$site = $finder->getSiteByPageId($pageUid);
+			$router = $site->getRouter();
+			return (string)$router->generateUri($pageUid, $params);
 		}
 		$cObj = GeneralUtility::makeInstance(\TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer::class);
 
@@ -53,31 +57,6 @@ class BackendUtility
 
 		return $link;
 	}
-
-
-	/**
-	 * Init Frontend Structure (f.e. for Link Generating in CLI-Commands)
-	 * 
-	 * @return void 
-	 * @throws InvalidArgumentException 
-	 */
-	protected static function initFrontend(): void
-	{
-		$id = 1;
-		$typeNum = 0;
-		if (!is_object($GLOBALS['TT'])) {
-			$GLOBALS['TT'] = new \TYPO3\CMS\Core\TimeTracker\TimeTracker;
-			$GLOBALS['TT']->start();
-		}
-		$GLOBALS['TSFE'] = GeneralUtility::makeInstance(\TYPO3\CMS\Frontend\Controller\TypoScriptFrontendController::class, $GLOBALS['TYPO3_CONF_VARS'], $id, $typeNum);
-		$GLOBALS['TSFE']->connectToDB();
-		$GLOBALS['TSFE']->initFEuser();
-		$GLOBALS['TSFE']->determineId();
-		$GLOBALS['TSFE']->initTemplate();
-		$GLOBALS['TSFE']->getConfigArray();
-	}
-
-
 
 	/**
 	 * Returns the current page uid (in backend and frontend context).
