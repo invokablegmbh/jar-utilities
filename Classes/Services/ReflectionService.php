@@ -16,6 +16,7 @@ use Jar\Utilities\Utilities\TcaUtility;
 use Jar\Utilities\Utilities\WildcardUtility;
 use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Database\Platform\PlatformInformation;
 use TYPO3\CMS\Core\Database\Query\Expression\CompositeExpression;
 use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 use TYPO3\CMS\Core\Database\RelationHandler;
@@ -32,8 +33,8 @@ use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
  */
 
 
-/** 
- * @package Jar\Utilities\Services 
+/**
+ * @package Jar\Utilities\Services
  * Service class for converting complex objects to a simple array structure based of TCA configuration.
  * Handy for faster "backend to frontend" development, headless systems and ajax calls.
  **/
@@ -108,41 +109,115 @@ class ReflectionService
 	 */
 	private array $tableColumnRemapping = [];
 
+	/*
+		Related items  structure:
+		'table' => [
+			id => [
+				'sys_language_uid' => 0
+			]
+			...
+		]
+		...
+	*/
+	/**
+	 * Tablebased list of related items for collection loads of relations
+	 *
+	 * @var array
+	 */
+	private array $relatedItems = [];
+
+	/**
+	 * Tablebased list of unloaded related items for collection loads of relations
+	 *
+	 * @var array
+	 */
+	private array $unloadedRelatedItems = [];
+
+	/**
+	 * Tablebased list of loaded related items for collection loads of relations
+	 *
+	 * @var array
+	 */
+	private array $loadedRelatedItems = [];
+
+	/*
+		Related children structure:
+		'sys_language_uid' => [
+			'table' => [
+				'foreign_field' => [
+					parent_id => [],
+					...
+				]
+				...
+			]
+			...
+		]
+		...
+	*/
+
+	/**
+	 * Tablebased list of related children for collection loads of relations
+	 *
+	 * @var array
+	 */
+	private array $relatedChildren = [];
+
+	/**
+	 * Tablebased list of unloaded children items for collection loads of relations
+	 *
+	 * @var array
+	 */
+	private array $unloadedRelatedChildren = [];
+
+	/**
+	 * Tablebased list of loaded children items for collection loads of relations
+	 *
+	 * @var array
+	 */
+	private array $loadedRelatedChildren = [];
+
 	/**
 	 * Reflects a list of record rows.
-	 * 
+	 *
 	 * @param array $rows The record list.
 	 * @param string $table The tablename.
 	 * @param int $maxDepth The maximum depth at which related elements are loaded (default is 8).
 	 * @return array Reflected result.
-	 * @throws InvalidArgumentException 
-	 * @throws RuntimeException 
-	 * @throws TooDirtyException 
-	 * @throws ReflectionException 
+	 * @throws InvalidArgumentException
+	 * @throws RuntimeException
+	 * @throws TooDirtyException
+	 * @throws ReflectionException
 	 */
 	public function buildArrayByRows(array $rows, string $table, int $maxDepth = 8): array
 	{
 		$result = [];
 		foreach ($rows as $key => $row) {
-			$result[$key] = $this->buildArrayByRow($row, $table);
+			$result[$key] = $this->buildArrayByRow($row, $table, $maxDepth, false);
 		}
+		
+		// handle collection load of relations
+		while (count($this->unloadedRelatedItems) + count($this->unloadedRelatedChildren)) {			
+			$this->collectUnloadedElements();
+		}
+
 		return $result;
 	}
 
 
 	/**
 	 * Reflects a single record row.
-	 * 
+	 *
 	 * @param array $row The record row.
 	 * @param string $table The tablename.
 	 * @param int $maxDepth The maximum depth at which related elements are loaded (default is 8).
-	 * @return null|array 
-	 * @throws InvalidArgumentException 
-	 * @throws RuntimeException 
-	 * @throws TooDirtyException 
-	 * @throws ReflectionException 
+	 * @param bool $resolveRelations Flag for resolving subrelations
+	 * @return null|array
+	 * @throws InvalidArgumentException
+	 * @throws RuntimeException
+	 * @throws TooDirtyException
+	 * @throws ReflectionException
 	 */
-	public function &buildArrayByRow(array $row, string $table, int $maxDepth = 8): ?array
+	public function &buildArrayByRow(array $row, string $table, int $maxDepth = 8, bool $resolveRelations = true): ?array
 	{
 		if ($this->debug) {
 			DebuggerUtility::var_dump($row, 'Reflection Service buildArrayByRow IN ' . $table);
@@ -191,7 +266,7 @@ class ReflectionService
 			$tcaDefinition = TcaUtility::getFieldDefinition($table, $tcaColumn, $tcaType);
 			$config = $tcaDefinition['config'];
 
-			// final key name in result list				
+			// final key name in result list
 			if (empty($removeablePrefixes)) {
 				$targetKey = $tcaColumn;
 			} else {
@@ -248,7 +323,9 @@ class ReflectionService
 						if (!$config['enableRichtext']) {
 							$result[$targetKey] = nl2br($rawValue ?? '');
 						} else {
-							$result[$targetKey] = FormatUtility::renderRteContent($rawValue);
+							if(!empty($rawValue)) {
+								$result[$targetKey] = FormatUtility::renderRteContent($rawValue);
+							}							
 						}
 						break;
 
@@ -267,6 +344,7 @@ class ReflectionService
 					case 'select':
 					case 'group':
 					case 'category':
+
 						// just return the raw value(s) of flat selects or group which aren't handle db-relations
 						if (
 							($config['type'] === 'group' && $config['internal_type'] !== 'db') ||
@@ -275,19 +353,16 @@ class ReflectionService
 							$result[$targetKey] = ((int) $config['maxitems'] > 1) ? GeneralUtility::trimExplode(',', $rawValue, true) : $rawValue;
 							break;
 						}
-						// Load relations to other tables												
-						$relationHandler = GeneralUtility::makeInstance(RelationHandler::class);
-						$relationHandler->start($rawValue, ($config['type'] === 'group') ? $config['allowed'] : $config['foreign_table'], $config['MM'], $uid, $table, $config);
-						$relationHandler->getFromDB();
-						$resolvedItemArray = $relationHandler->getResolvedItemArray();
 
-						if (empty($resolvedItemArray)) {
-							$result[$targetKey] = [];
-							break;
-						}
+						$foreignTable = ($config['type'] === 'group') ? $config['allowed'] : $config['foreign_table'];
 
 						// handle sys_file_references directly, no recursive resolving
 						if ($config['foreign_table'] === 'sys_file_reference') {
+							$relationHandler = GeneralUtility::makeInstance(RelationHandler::class);
+							$relationHandler->start($rawValue, $foreignTable, $config['MM'], $uid, $table, $config);						
+							$relationHandler->getFromDB();
+							$resolvedItemArray = $relationHandler->getResolvedItemArray();
+
 							$result[$targetKey] = [];
 							foreach ($resolvedItemArray as $resolvedItem) {
 								if (!empty($resolvedItem['uid'])) {
@@ -304,57 +379,140 @@ class ReflectionService
 									}
 								}
 							}
-						} else {
+							break;
+						}
 
-							// When we have just sub-relations from one other table, make huge select, otherwise load row for row
-							$foreignTables = IteratorUtility::pluck($resolvedItemArray, 'table');
-							$foreignTableAmount = Count(array_unique($foreignTables));
-							$connectionPool = GeneralUtility::makeInstance(ConnectionPool::class);
+						// set currentLanguage to the language of the row
+						$currentLanguageUid = $row['sys_language_uid'];
 
-							// set currentLanguage to the language of the row
-							$currentLanguageUid = $row['sys_language_uid'];
-							if ($foreignTableAmount === 1) {
-								// TODO: Just load Elements which aren't loaded yet
-								$foreignTable = reset($foreignTables);
-								$queryBuilder = $connectionPool->getQueryBuilderForTable($foreignTable);
-								$selectUids = IteratorUtility::pluck($resolvedItemArray, 'uid');
-								$queryResult = $queryBuilder
-									->select('*')
-									->from($foreignTable)
-									->where(
-										$this->createLanguageContraints($queryBuilder, $selectUids, $foreignTable, $currentLanguageUid)
-									)
-									->execute();
+						// Load relations to other tables
+						if (!$resolveRelations) {
+							
+							// resolve collected parent / child relations
+							if (!$config['MM'] && $foreignTable && $config['foreign_field']) {							
 
-								$foreignItems = [];
-								while ($foreignRow = $queryResult->fetch()) {
-									$sortUid = array_search($foreignRow['uid'], $selectUids);
-									$foreignItems[$sortUid] = &$this->buildArrayByRow($foreignRow, $foreignTable, $maxDepth - 1);
+								// switch to the real UID for translated elements
+								if($currentLanguageUid !== 0 && !empty($row['_LOCALIZED_UID'])) {
+									$uid = $row['_LOCALIZED_UID'];
+								}								
+
+								if (is_array($this->loadedRelatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid])) {
+									// is allready loaded?
+									$this->relatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid] = &$this->loadedRelatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid];
+								} else {
+									// mark for collection loading
+									$this->unloadedRelatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid] = [];
+									$this->relatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid] = &$this->unloadedRelatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid];
 								}
-								ksort($foreignItems);
-								$result[$targetKey] = $foreignItems;
+
+								$result[$targetKey] = &$this->relatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid];
 							} else {
-								$foreignItems = [];
-								foreach ($resolvedItemArray as $resolvedItem) {
-									$queryBuilder = $connectionPool->getQueryBuilderForTable($resolvedItem['table']);
-									$queryResult = $queryBuilder
-										->select('*')
-										->from($resolvedItem['table'])
-										->where(
-											$this->createLanguageContraints($queryBuilder, $resolvedItem['uid'], $resolvedItem['table'], $currentLanguageUid)
-										)
-										->execute();
-									if ($foreignRow = $queryResult->fetch()) {
-										$foreignItems[] = &$this->buildArrayByRow($foreignRow, $resolvedItem['table'], $maxDepth - 1);
+								// UID based mode
+								$relationHandler = GeneralUtility::makeInstance(RelationHandler::class);
+								$relationHandler->start($rawValue, $foreignTable, $config['MM'], $uid, $table, $config);
+								$relationList = [];
+								foreach ($relationHandler->itemArray as $item) {
+									$foreignRelationTable = $item['table'];
+									$foreignRelationId = $item['id'];
+
+									// just set markers to relations
+									if (!key_exists($foreignRelationTable, $this->relatedItems)) {
+										$this->relatedItems[$foreignRelationTable] = [];
 									}
+									if (!key_exists($foreignRelationTable, $this->unloadedRelatedItems)) {
+										$this->unloadedRelatedItems[$foreignRelationTable] = [];
+									}
+									if (!key_exists($foreignRelationTable, $this->loadedRelatedItems)) {
+										$this->loadedRelatedItems[$foreignRelationTable] = [];
+									}
+
+
+									if (!empty($this->loadedRelatedItems[$foreignRelationTable][$foreignRelationId])) {
+										// is allready loaded?
+										$this->relatedItems[$foreignRelationTable][$foreignRelationId] = &$this->loadedRelatedItems[$foreignRelationTable][$foreignRelationId];
+									} else {
+										// mark for collection loading
+										$this->unloadedRelatedItems[$foreignRelationTable][$foreignRelationId] = [
+											'sys_language_uid' => $currentLanguageUid,
+										];
+										$this->relatedItems[$foreignRelationTable][$foreignRelationId] = &$this->unloadedRelatedItems[$foreignRelationTable][$foreignRelationId];
+									}
+
+									$relationList[] = &$this->relatedItems[$foreignRelationTable][$foreignRelationId];
 								}
-								$result[$targetKey] = $foreignItems;
+								$result[$targetKey] = $relationList;
+							}
+						} else {
+							$relationHandler = GeneralUtility::makeInstance(RelationHandler::class);
+							$relationHandler->start($rawValue, $foreignTable, $config['MM'], $uid, $table, $config);
+							// thus the relation handler works only with elements in the default language, just use in that case,
+							// otherwise load the elements on our own
+							if($currentLanguageUid === 0) {
+								$relationHandler->setFetchAllFields(true);								
+							}
+							// we have to load the elements twice, first (here) in default and later as translated value
+							$dbResult = $relationHandler->getFromDB();
+
+							$resolvedItemArray = $relationHandler->getResolvedItemArray();
+
+							if (empty($resolvedItemArray)) {
+								$result[$targetKey] = [];
+								break;
+							} else {
+
+								// When we have just sub-relations from one other table, make huge select, otherwise load row for row
+								$foreignTables = IteratorUtility::pluck($resolvedItemArray, 'table');
+								$foreignTableAmount = Count(array_unique($foreignTables));
+
+								if ($foreignTableAmount === 1) {
+									$foreignTable = reset($foreignTables);
+									$selectUids = IteratorUtility::pluck($resolvedItemArray, 'uid');
+
+									$foreignItems = [];
+									
+									if ($currentLanguageUid === 0) {									
+										// default language, loaded via relation handler
+										foreach ($resolvedItemArray as $resolvedItem) {
+											$foreignRow = $resolvedItem['record'] ?? $dbResult[$resolvedItem['table']][$resolvedItem['uid']];
+											$sortUid = array_search($foreignRow['uid'], $selectUids);
+											$foreignItems[$sortUid] = &$this->buildArrayByRow($foreignRow, $foreignTable, $maxDepth - 1);
+										}
+									} else {
+										// load translated elements on our own									
+										$connectionPool = GeneralUtility::makeInstance(ConnectionPool::class);	
+										$queryBuilder = $connectionPool->getQueryBuilderForTable($foreignTable);
+										$queryResult = $queryBuilder
+											->select('*')
+											->from($foreignTable)
+											->where(
+												$this->createLanguageContraints($queryBuilder, $selectUids, $foreignTable, $currentLanguageUid)
+											)
+											->execute();
+										while ($foreignRow = $queryResult->fetch()) {											
+											$sortUid = array_search($foreignRow['uid'], $selectUids);
+											$foreignItems[$sortUid] = &$this->buildArrayByRow($foreignRow, $foreignTable, $maxDepth - 1);
+										}	
+									}									
+
+									ksort($foreignItems);
+									$result[$targetKey] = $foreignItems;
+
+								} else {
+									// TODO: Clean this up, or delete it
+									$foreignItems = [];
+									foreach ($resolvedItemArray as $resolvedItem) {
+										if ($foreignRow = $resolvedItem['record'] ?? $dbResult[$resolvedItem['table']][$resolvedItem['uid']]) {
+											$foreignItems[] = &$this->buildArrayByRow($foreignRow, $resolvedItem['table'], $maxDepth - 1);
+										}
+									}
+									$result[$targetKey] = $foreignItems;
+								}
 							}
 						}
 
 						break;
 					case 'flex':
-						// TODO: handle that 
+						// TODO: handle that
 						$result[$targetKey] = $rawValue;
 						break;
 
@@ -369,14 +527,111 @@ class ReflectionService
 		return $this->elementStorage[$table][$uid];
 	}
 
+	private function collectUnloadedElements()
+	{
+		$this->loadUnloadedRelationItems();
+		$this->loadUnloadedChildItems();
+	}
+
+	private function loadUnloadedChildItems()
+	{
+		$connectionPool = GeneralUtility::makeInstance(ConnectionPool::class);	
+
+		foreach ($this->unloadedRelatedChildren as $languageUid => $tables) {
+			foreach ($tables as $table => $foreign_fields) {
+				foreach ($foreign_fields as $foreign_field => $items) {
+					$ids = array_keys($items);
+					$idChunks = array_chunk($ids, 1024 / 2);
+					$groups = [];
+
+					foreach ($idChunks as $idChunk) {
+
+						$queryBuilder = $connectionPool->getQueryBuilderForTable($table);
+						$queryResult = $queryBuilder
+							->select('*')
+							->from($table)
+							->where(
+								$queryBuilder->expr()->in($foreign_field, $queryBuilder->createNamedParameter($idChunk, Connection::PARAM_INT_ARRAY))
+							)
+							->execute();
+
+						while ($row = $queryResult->fetch()) {
+							$groups[$row[$foreign_field]][] = $this->buildArrayByRow($row, $table, 8, false);
+						}
+					}
+
+					foreach ($groups as $parentId => $items) {
+						$this->loadedRelatedChildren[$languageUid][$table][$foreign_field][$parentId] = $this->relatedChildren[$languageUid][$table][$foreign_field][$parentId] = $items;
+					}
+
+					unset($this->unloadedRelatedChildren[$languageUid][$table][$foreign_field]);
+					if (!count($this->unloadedRelatedChildren[$languageUid][$table])) {
+						unset($this->unloadedRelatedChildren[$languageUid][$table]);
+					}
+					if (!count($this->unloadedRelatedChildren[$languageUid])) {
+						unset($this->unloadedRelatedChildren[$languageUid]);
+					}
+				}
+			}
+		}
+	}
+
+	private function loadUnloadedRelationItems()
+	{
+		$connectionPool = GeneralUtility::makeInstance(ConnectionPool::class);
+
+		foreach ($this->unloadedRelatedItems as $table => $items) {
+
+			// split items by language and load them separatly
+			$languageItems = [];
+			foreach ($items as $id => $item) {
+				$languageItems[$item['sys_language_uid'] ?? -1][] = $id;
+			}
+
+			foreach ($languageItems as $languageUid => $ids) {
+
+				if (!is_array($ids) || !count($ids)) {
+					continue;
+				}
+				$queryBuilder = $connectionPool->getQueryBuilderForTable($table);
+				$queryResult = $queryBuilder
+					->select('*')
+					->from($table)
+					->where(
+						$this->createLanguageContraints($queryBuilder, $ids, $table, $languageUid)
+					)
+					->execute();
+
+				$rows = [];
+				while ($row = $queryResult->fetch()) {
+					$rows[$row['uid']] = $row;
+				}
+
+				// add to loaded relations
+				if (!key_exists($table, $this->loadedRelatedItems)) {
+					$this->loadedRelatedItems[$table] = [];
+				}
+
+				foreach ($ids as $id) {
+					$reflectedItem = &$this->buildArrayByRow($rows[$id], $table, 8, false);
+					$this->loadedRelatedItems[$table][$id] = $reflectedItem;
+					$this->relatedItems[$table][$id] = $reflectedItem;
+				}
+			}
+
+			unset($this->unloadedRelatedItems[$table]);
+		}
+	}
+
+
 
 	/**
 	 * Helper Method for just loading elements for the matching language
-	 * @param QueryBuilder $queryBuilder 
-	 * @param string $table 
-	 * @param mixed $singleUidOrUidList 
+	 * @param QueryBuilder $queryBuilder
+	 * @param string $table
+	 * @param mixed $singleUidOrUidList
 	 * @param ?int $currentLanguageUid
-	 * @return null|CompositeExpression 	 
+	 * @return null|CompositeExpression
 	 */
 	private function createLanguageContraints(QueryBuilder $queryBuilder, $singleUidOrUidList, string $table, int $currentLanguageUid = null)
 	{
@@ -435,8 +690,8 @@ class ReflectionService
 	}
 
 	/**
-	 * @param string $table 
-	 * @return void 
+	 * @param string $table
+	 * @return void
 	 */
 	private function createTableStorageIfNotExist(string $table): void
 	{
@@ -446,9 +701,9 @@ class ReflectionService
 	}
 
 	/**
-	 * @param string $table 
-	 * @param int $uid 
-	 * @return bool 
+	 * @param string $table
+	 * @param int $uid
+	 * @return bool
 	 */
 	private function isInStorage(string $table, int $uid): bool
 	{
@@ -458,10 +713,10 @@ class ReflectionService
 
 
 	/**
-	 * @param string $table 
-	 * @param int $uid 
-	 * @param null|array $item 
-	 * @return void 
+	 * @param string $table
+	 * @param int $uid
+	 * @param null|array $item
+	 * @return void
 	 */
 	private function storeItemInStorage(string $table, int $uid, ?array $item): void
 	{
@@ -472,7 +727,7 @@ class ReflectionService
 	/**
 	 * Sets multiple properties in one call.
 	 * @param array $configuration Configuration settings.
-	 * @return ReflectionService 
+	 * @return ReflectionService
 	 */
 	public function setPropertiesByConfigurationArray(array $configuration): self
 	{
@@ -507,9 +762,9 @@ class ReflectionService
 	}
 
 	/**
-	 * @param array $processorConfiguration 
-	 * @param string $key 
-	 * @return array 
+	 * @param array $processorConfiguration
+	 * @param string $key
+	 * @return array
 	 */
 	private function convertProcessorConfigurationStringListToArray(array $processorConfiguration, string $key): array
 	{
@@ -534,7 +789,7 @@ class ReflectionService
 	}
 
 	/**
-	 * Set list of columns that are generally not processed.	 
+	 * Set list of columns that are generally not processed.
 	 *
 	 * @param  array  $columnBlacklist  List of columns that are generally not processed.
 	 * @return self
