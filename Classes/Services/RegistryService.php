@@ -38,7 +38,7 @@ class RegistryService  implements \TYPO3\CMS\Core\SingletonInterface
 	 */
 	public function set(string $storeName, string $key, $value): RegistryService
 	{
-		if (!is_array($this->store[$storeName])) {
+		if (!array_key_exists($storeName, $this->store)) {
 			$this->store[$storeName] = [];
 		}
 
