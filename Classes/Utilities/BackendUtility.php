@@ -69,7 +69,10 @@ class BackendUtility
 			return null;
 		}
 
-		if($GLOBALS['TYPO3_REQUEST'] && $GLOBALS['TYPO3_REQUEST']->getAttribute('route') && strpos($GLOBALS['TYPO3_REQUEST']->getAttribute('route')->getOption('moduleName'), 'file_') !==  false) {
+		if($GLOBALS['TYPO3_REQUEST'] 
+			&& $GLOBALS['TYPO3_REQUEST']->getAttribute('route') 
+			&& $GLOBALS['TYPO3_REQUEST']->getAttribute('route')->getOption('moduleName') 
+			&& strpos($GLOBALS['TYPO3_REQUEST']->getAttribute('route')->getOption('moduleName'), 'file_') !==  false) {
 			return null;
 		}
 
