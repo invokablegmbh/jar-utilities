@@ -65,7 +65,7 @@ class BackendUtility
 	 * */
 	public static function currentPageUid(): ?int
 	{
-		if(!$GLOBALS['TYPO3_REQUEST']) {
+		if(!array_key_exists('TYPO3_REQUEST', $GLOBALS) || !$GLOBALS['TYPO3_REQUEST']) {
 			return null;
 		}
 
