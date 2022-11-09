@@ -450,6 +450,11 @@ class ReflectionService
 							if($currentLanguageUid === 0) {
 								$relationHandler->setFetchAllFields(true);								
 							}
+							
+							// don't fetch hidden items
+							$queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable($foreignTable)->createQueryBuilder();
+							$relationHandler->additionalWhere[$foreignTable] = $queryBuilder->expr()->eq('hidden', 0);
+
 							// we have to load the elements twice, first (here) in default and later as translated value
 							$dbResult = $relationHandler->getFromDB();
 
