@@ -169,6 +169,8 @@ class ReflectionService
 	 */
 	private array $unloadedRelatedChildren = [];
 
+	private array $unloadedRelatedChildrenTCA = [];
+
 	/**
 	 * Tablebased list of loaded children items for collection loads of relations
 	 *
@@ -250,19 +252,18 @@ class ReflectionService
 		$columnRemapping = $this->tableColumnRemapping[$table] ?? [];
 
 		$tcaType = TcaUtility::getTypeFromRow($table, $row);
-
 		// load TCA Config for each column and proccess
 		foreach ($tcaColumns as $tcaColumn) {
 			// just process whitelist columns (if set)
 			if (Count($whitelist) && !WildcardUtility::matchAgainstPatternList($whitelist, $tcaColumn)) {
 				continue;
 			}
-
+			
 			// just handle columns which aren't generally blacklisted or blacklisted for that table
 			if (in_array($tcaColumn, $blacklist) || WildcardUtility::matchAgainstPatternList($blacklist, $tcaColumn)) {
 				continue;
 			}
-
+			
 			$tcaDefinition = TcaUtility::getFieldDefinition($table, $tcaColumn, $tcaType);
 			$config = $tcaDefinition['config'];
 
@@ -294,7 +295,7 @@ class ReflectionService
 				}
 
 				$rawValue = $row[$tcaColumn];
-
+				
 				switch ($config['type']) {
 					case 'input':
 						switch ($config['renderType']) {
@@ -384,7 +385,7 @@ class ReflectionService
 
 						// set currentLanguage to the language of the row
 						$currentLanguageUid = $row['sys_language_uid'];
-
+						
 						// Load relations to other tables
 						if (!$resolveRelations) {
 							
@@ -395,13 +396,14 @@ class ReflectionService
 								if($currentLanguageUid !== 0 && !empty($row['_LOCALIZED_UID'])) {
 									$uid = $row['_LOCALIZED_UID'];
 								}								
-
+								
 								if (is_array($this->loadedRelatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid])) {
 									// is allready loaded?
 									$this->relatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid] = &$this->loadedRelatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid];
 								} else {
 									// mark for collection loading
 									$this->unloadedRelatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid] = [];
+									$this->unloadedRelatedChildrenTCA[$currentLanguageUid][$foreignTable][$config['foreign_field']] = $config;
 									$this->relatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid] = &$this->unloadedRelatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid];
 								}
 
@@ -454,7 +456,8 @@ class ReflectionService
 							// don't fetch hidden items
 							$queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable($foreignTable)->createQueryBuilder();
 							$relationHandler->additionalWhere[$foreignTable] = $queryBuilder->expr()->eq('hidden', 0);
-
+							
+							//foreign_sortby
 							// we have to load the elements twice, first (here) in default and later as translated value
 							$dbResult = $relationHandler->getFromDB();
 
@@ -541,7 +544,6 @@ class ReflectionService
 	private function loadUnloadedChildItems()
 	{
 		$connectionPool = GeneralUtility::makeInstance(ConnectionPool::class);	
-
 		foreach ($this->unloadedRelatedChildren as $languageUid => $tables) {
 			foreach ($tables as $table => $foreign_fields) {
 				foreach ($foreign_fields as $foreign_field => $items) {
@@ -552,14 +554,18 @@ class ReflectionService
 					foreach ($idChunks as $idChunk) {
 
 						$queryBuilder = $connectionPool->getQueryBuilderForTable($table);
-						$queryResult = $queryBuilder
+						$queryBuilder 
 							->select('*')
 							->from($table)
 							->where(
 								$queryBuilder->expr()->in($foreign_field, $queryBuilder->createNamedParameter($idChunk, Connection::PARAM_INT_ARRAY))
-							)
-							->execute();
-
+							);
+							
+						$tca = $this->unloadedRelatedChildrenTCA[$languageUid][$table][$foreign_field] ?? false;
+						if($tca && isset($tca['foreign_sortby'])) {
+							$queryBuilder->orderBy($tca['foreign_sortby']);
+						}
+						$queryResult = $queryBuilder->execute();
 						while ($row = $queryResult->fetch()) {
 							$groups[$row[$foreign_field]][] = $this->buildArrayByRow($row, $table, 8, false);
 						}
@@ -572,9 +578,11 @@ class ReflectionService
 					unset($this->unloadedRelatedChildren[$languageUid][$table][$foreign_field]);
 					if (!count($this->unloadedRelatedChildren[$languageUid][$table])) {
 						unset($this->unloadedRelatedChildren[$languageUid][$table]);
+						unset($this->unloadedRelatedChildrenTCA[$languageUid][$table]);
 					}
 					if (!count($this->unloadedRelatedChildren[$languageUid])) {
 						unset($this->unloadedRelatedChildren[$languageUid]);
+						unset($this->unloadedRelatedChildrenTCA[$languageUid]);
 					}
 				}
 			}
@@ -586,13 +594,13 @@ class ReflectionService
 		$connectionPool = GeneralUtility::makeInstance(ConnectionPool::class);
 
 		foreach ($this->unloadedRelatedItems as $table => $items) {
-
+			
 			// split items by language and load them separatly
 			$languageItems = [];
 			foreach ($items as $id => $item) {
 				$languageItems[$item['sys_language_uid'] ?? -1][] = $id;
 			}
-
+			
 			foreach ($languageItems as $languageUid => $ids) {
 
 				if (!is_array($ids) || !count($ids)) {
