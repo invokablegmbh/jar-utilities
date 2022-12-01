@@ -4,10 +4,18 @@ declare(strict_types=1);
 
 namespace Jar\Utilities\Utilities;
 
-define('FNM_PATHNAME', 1);
-define('FNM_NOESCAPE', 2);
-define('FNM_PERIOD', 4);
-define('FNM_CASEFOLD', 16);
+if (!defined('FNM_PATHNAME')) {
+	define('FNM_PATHNAME', 1);
+}
+if (!defined('FNM_NOESCAPE')) {
+	define('FNM_NOESCAPE', 2);
+}
+if (!defined('FNM_PERIOD')) {
+	define('FNM_PERIOD', 4);
+}
+if (!defined('FNM_CASEFOLD')) {
+	define('FNM_CASEFOLD', 16);
+}
 
 /*
  * This file is part of the JAR/Utilities project under GPLv2 or later.

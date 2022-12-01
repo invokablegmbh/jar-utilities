@@ -297,7 +297,7 @@ class ReflectionService
 
 				switch ($config['type']) {
 					case 'input':
-						switch ($config['renderType']) {
+						switch ($config['renderType'] ?? '') {
 							case 'inputLink':
 								// Links
 								$result[$targetKey] = FormatUtility::buildLinkArray($rawValue);
@@ -350,7 +350,7 @@ class ReflectionService
 							($config['type'] === 'group' && $config['internal_type'] !== 'db') ||
 							($config['type'] !== 'group' && empty($config['foreign_table']))
 						) {
-							$result[$targetKey] = ((int) $config['maxitems'] > 1) ? GeneralUtility::trimExplode(',', $rawValue, true) : $rawValue;
+							$result[$targetKey] = ((int) ($config['maxitems'] ?? 0) > 1) ? GeneralUtility::trimExplode(',', $rawValue, true) : $rawValue;
 							break;
 						}
 
