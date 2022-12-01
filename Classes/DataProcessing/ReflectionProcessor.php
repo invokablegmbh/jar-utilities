@@ -100,7 +100,7 @@ class ReflectionProcessor implements DataProcessorInterface
             $processedData[$populatedProcessorConfiguration['as']] = $result;
         } else {
             if($singleRowMode) {
-                if((bool) $populatedProcessorConfiguration['replace']) {
+                if((bool) ($populatedProcessorConfiguration['replace'] ?? false)) {
                     $processedData = $result;
                 } else {
                     ArrayUtility::mergeRecursiveWithOverrule($processedData, $result);            
