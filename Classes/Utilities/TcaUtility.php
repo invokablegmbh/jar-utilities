@@ -151,7 +151,7 @@ class TcaUtility
 	public static function getTypeFieldOfTable(string $table): ?string
 	{
 		$tca = self::getTca();
-		return $tca[$table]['ctrl']['type'] ?? null;
+		return $tca[$table]['ctrl']['type'];
 	}
 
 	/**

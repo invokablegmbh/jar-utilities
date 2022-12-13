@@ -359,7 +359,7 @@ class ReflectionService
 						// handle sys_file_references directly, no recursive resolving
 						if ($config['foreign_table'] === 'sys_file_reference') {
 							$relationHandler = GeneralUtility::makeInstance(RelationHandler::class);
-							$relationHandler->start($rawValue, $foreignTable, $config['MM'] ?? null, $uid, $table, $config);						
+							$relationHandler->start($rawValue, $foreignTable, $config['MM'], $uid, $table, $config);						
 							$relationHandler->getFromDB();
 							$resolvedItemArray = $relationHandler->getResolvedItemArray();
 
