@@ -118,13 +118,13 @@ class TcaUtility
 			$definition = static::getFieldDefinition($table, $column, $type);
 
 			// check visibility
-			$isDisabled = (bool) BackendUtility::getCurrentPageTS()['TCEFORM'][$table][$column]['disabled'];
+			$isDisabled = (bool) (BackendUtility::getCurrentPageTS()['TCEFORM'][$table][$column]['disabled'] ?? false);
 			if ($isDisabled) {
 				continue;
 			}
 
 			// check exclude
-			if ($definition['exclude']) {
+			if ($definition['exclude'] ?? false) {
 				if (empty($GLOBALS['BE_USER']) || !$GLOBALS['BE_USER']->isAdmin()) {
 					continue;
 				}
@@ -151,7 +151,7 @@ class TcaUtility
 	public static function getTypeFieldOfTable(string $table): ?string
 	{
 		$tca = self::getTca();
-		return $tca[$table]['ctrl']['type'];
+		return $tca[$table]['ctrl']['type'] ?? null;
 	}
 
 	/**
@@ -234,7 +234,7 @@ class TcaUtility
 	public static function getFieldDefinition(string $table, string $column, ?string $type = null): ?array
 	{
 		$tca = self::getTca();
-		$definition = $tca[$table]['columns'][$column];
+		$definition = $tca[$table]['columns'][$column] ?? null;
 
 		if (empty($definition)) {
 			return null;

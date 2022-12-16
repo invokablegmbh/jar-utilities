@@ -264,7 +264,7 @@ class ReflectionService
 			}
 
 			$tcaDefinition = TcaUtility::getFieldDefinition($table, $tcaColumn, $tcaType);
-			$config = $tcaDefinition['config'];
+			$config = $tcaDefinition['config'] ?? [];
 
 			// final key name in result list
 			if (empty($removeablePrefixes)) {
@@ -284,7 +284,7 @@ class ReflectionService
 
 			// bloody fallback when no TCA informations are found
 			if (empty($config)) {
-				$result[$targetKey] = $row[$tcaColumn];
+				$result[$targetKey] = $row[$tcaColumn] ?? [];
 			} else {
 				// populate the raw row informations (unless it is a password field)
 				if (!empty($config['eval'])) {
@@ -320,7 +320,7 @@ class ReflectionService
 
 					case 'text':
 						// Textareas and RTE: add <br> to textareas, parse the content for RTE Text
-						if (!$config['enableRichtext']) {
+						if (!array_key_exists('enableRichtext', $config)) {
 							$result[$targetKey] = nl2br($rawValue ?? '');
 						} else {
 							if(!empty($rawValue)) {
@@ -347,7 +347,7 @@ class ReflectionService
 
 						// just return the raw value(s) of flat selects or group which aren't handle db-relations
 						if (
-							($config['type'] === 'group' && $config['internal_type'] !== 'db') ||
+							($config['type'] === 'group' && array_key_exists('internal_type', $config) && $config['internal_type'] !== 'db') ||
 							($config['type'] !== 'group' && empty($config['foreign_table']))
 						) {
 							$result[$targetKey] = ((int) ($config['maxitems'] ?? 0) > 1) ? GeneralUtility::trimExplode(',', $rawValue, true) : $rawValue;
@@ -357,9 +357,9 @@ class ReflectionService
 						$foreignTable = ($config['type'] === 'group') ? $config['allowed'] : $config['foreign_table'];
 
 						// handle sys_file_references directly, no recursive resolving
-						if ($config['foreign_table'] === 'sys_file_reference') {
+						if (array_key_exists('foreign_table', $config) && $config['foreign_table'] === 'sys_file_reference') {
 							$relationHandler = GeneralUtility::makeInstance(RelationHandler::class);
-							$relationHandler->start($rawValue, $foreignTable, $config['MM'], $uid, $table, $config);						
+							$relationHandler->start($rawValue, $foreignTable, $config['MM'] ?? '', $uid, $table, $config);						
 							$relationHandler->getFromDB();
 							$resolvedItemArray = $relationHandler->getResolvedItemArray();
 
@@ -367,7 +367,7 @@ class ReflectionService
 							foreach ($resolvedItemArray as $resolvedItem) {
 								if (!empty($resolvedItem['uid'])) {
 									$fileBuidlingConfiguration = $this->buildingConfiguration['file'] ?? [];
-									$cropVariants = $config['overrideChildTca']['columns']['crop']['config']['cropVariants'];
+									$cropVariants = $config['overrideChildTca']['columns']['crop']['config']['cropVariants'] ?? [];
 									ArrayUtility::mergeRecursiveWithOverrule($fileBuidlingConfiguration, [
 										'tcaCropVariants' => $cropVariants
 									]);
@@ -389,14 +389,14 @@ class ReflectionService
 						if (!$resolveRelations) {
 							
 							// resolve collected parent / child relations
-							if (!$config['MM'] && $foreignTable && $config['foreign_field']) {							
+							if (!array_key_exists('MM', $config) && $foreignTable && array_key_exists('foreign_field', $config)) {							
 
 								// switch to the real UID for translated elements
 								if($currentLanguageUid !== 0 && !empty($row['_LOCALIZED_UID'])) {
 									$uid = $row['_LOCALIZED_UID'];
 								}								
 
-								if (is_array($this->loadedRelatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid])) {
+								if (is_array($this->loadedRelatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid] ?? null)) {
 									// is allready loaded?
 									$this->relatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid] = &$this->loadedRelatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid];
 								} else {
@@ -409,7 +409,7 @@ class ReflectionService
 							} else {
 								// UID based mode
 								$relationHandler = GeneralUtility::makeInstance(RelationHandler::class);
-								$relationHandler->start($rawValue, $foreignTable, $config['MM'], $uid, $table, $config);
+								$relationHandler->start($rawValue, $foreignTable, $config['MM'] ?? '', $uid, $table, $config);
 								$relationList = [];
 								foreach ($relationHandler->itemArray as $item) {
 									$foreignRelationTable = $item['table'];
@@ -444,7 +444,7 @@ class ReflectionService
 							}
 						} else {
 							$relationHandler = GeneralUtility::makeInstance(RelationHandler::class);
-							$relationHandler->start($rawValue, $foreignTable, $config['MM'], $uid, $table, $config);
+							$relationHandler->start($rawValue, $foreignTable, $config['MM'] ?? '', $uid, $table, $config);
 							// thus the relation handler works only with elements in the default language, just use in that case,
 							// otherwise load the elements on our own
 							if($currentLanguageUid === 0) {

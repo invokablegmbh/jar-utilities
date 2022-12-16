@@ -80,13 +80,18 @@ class BackendUtility
 			return (int) GeneralUtility::_GP('id');
 		}
 
-		if (!empty(GeneralUtility::_GP('returnUrl'))) {
+		if (!empty(GeneralUtility::_GP('returnUrl'))) {			
 			parse_str(end(explode('?', GeneralUtility::_GP('returnUrl'))), $output);
 			if (!empty($output['id'])) {
 				return (int) $output['id'];
 			}
 		}
-		return (int) $GLOBALS['TSFE']->id;
+
+		if(isset($GLOBALS['TSFE'])) {
+			return (int) $GLOBALS['TSFE']->id;
+		}
+
+		return null;
 	}
 
 
