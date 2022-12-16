@@ -226,11 +226,12 @@ class BackendUtility
 	 */
 	public static function getCurrentPageTS(): array {
 		$cache = GeneralUtility::makeInstance(RegistryService::class);
-		$hash = 'current-page-ts';
+		$currentPageUid = BackendUtility::currentPageUid();
+		$hash = 'current-page-ts-' . $currentPageUid;
 
 		if (($pageTs = $cache->get('backend-utility', $hash)) === false) {
 			$pageTs = TypoScriptUtility::convertTypoScriptArrayToPlainArray(
-				BackendUtilityCore::getPagesTSconfig(BackendUtility::currentPageUid())
+				BackendUtilityCore::getPagesTSconfig($currentPageUid)
 			);
 			$cache->set('backend-utility', $hash, $pageTs);
 		}
