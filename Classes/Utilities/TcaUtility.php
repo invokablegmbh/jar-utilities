@@ -286,7 +286,7 @@ class TcaUtility
 		foreach ($items as $item) {
 			$result[$item[1]] = [
 				'value' => $item[0],
-				'icon' => $item[2],
+				'icon' => $item[2] ?? null,
 			];
 		}
 		return $result;
@@ -306,7 +306,7 @@ class TcaUtility
 	{
 		$items = static::getFieldConfig($table, $column, $type)['items'] ?? [];
 		$items = static::remapItemArrayToKeybasedList($items);
-		$result = $items[$value]['value'];
+		$result = $items[$value]['value'] ?? '';
 		if ($localize) {
 			$result = LocalizationUtility::localize((string) $result);
 		}
