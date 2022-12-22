@@ -30,6 +30,7 @@ use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
  *     class = warning blink
  *     target = _blank
  *     as = detail_link
+ *     flat = 1
  *     params {
  *         item_uid = TEXT
  *         item_uid.data = field:uid
@@ -74,6 +75,10 @@ class LinkProcessor implements DataProcessorInterface
 
         $key = $populatedProcessorConfiguration['as'] ?? 'link';
         $processedData[$key] = FormatUtility::buildLinkArray($linkString);
+
+        if(isset($linkConfiguration['flat']) && $linkConfiguration['flat'] && array_key_exists('url', $processedData[$key])) {
+            $processedData[$key] = $processedData[$key]['url'];
+        }
 
         return $processedData;
     }

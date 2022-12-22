@@ -17,6 +17,7 @@ class                           Link CSS Class
 target                          Linktarget
 params                          Additional params which will prepend as GET-Parameters
 as                              If set, the link would be stored in this key, otherwise the key "link" is used
+flat                            if true - direct return the URL otherwise return link object (default false)
 ============================    ========
 
 Output
