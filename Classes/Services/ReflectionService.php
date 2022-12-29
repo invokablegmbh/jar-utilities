@@ -451,9 +451,10 @@ class ReflectionService
 								$relationHandler->setFetchAllFields(true);								
 							}
 							
-							// don't fetch hidden items
+							// don't fetch hidden and deleted items
 							$queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable($foreignTable)->createQueryBuilder();
 							$relationHandler->additionalWhere[$foreignTable] = $queryBuilder->expr()->eq('hidden', 0);
+							$relationHandler->additionalWhere[$foreignTable] = $queryBuilder->expr()->eq('deleted', 0);
 
 							// we have to load the elements twice, first (here) in default and later as translated value
 							$dbResult = $relationHandler->getFromDB();
@@ -618,9 +619,14 @@ class ReflectionService
 				}
 
 				foreach ($ids as $id) {
-					$reflectedItem = &$this->buildArrayByRow($rows[$id], $table, 8, false);
+					if(array_key_exists($id, $rows)) {
+						$reflectedItem = &$this->buildArrayByRow($rows[$id], $table, 8, false);
+					} else {
+						$reflectedItem = null;
+					}
 					$this->loadedRelatedItems[$table][$id] = $reflectedItem;
 					$this->relatedItems[$table][$id] = $reflectedItem;
+					
 				}
 			}
 
