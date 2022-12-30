@@ -293,7 +293,7 @@ class ReflectionService
 					}
 				}
 
-				$rawValue = $row[$tcaColumn];
+				$rawValue = $row[$tcaColumn] ?? '';
 
 				switch ($config['type']) {
 					case 'input':
