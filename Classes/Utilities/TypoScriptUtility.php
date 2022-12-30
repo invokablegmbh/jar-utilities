@@ -35,10 +35,10 @@ class TypoScriptUtility
 	 * @param string|null $path Dot notated TypoScript path.
 	 * @param int|null $pageUid PageUid from which page the TypoScript should be loaded (optional in Frontend).
 	 * @param bool $populated should the Data be populated (f.e. "element = TEXT / element.value = Bla" => "element = Bla").
-	 * @return array The plain TypoScript array.
+	 * @return array|string The plain TypoScript array.
 	 * @throws InvalidArgumentException
 	 */
-	public static function get(string $path = null, int $pageUid = null, bool $populated = false): array
+	public static function get(string $path = null, int $pageUid = null, bool $populated = false)
 	{
 		$cache = GeneralUtility::makeInstance(RegistryService::class);
 
@@ -79,9 +79,9 @@ class TypoScriptUtility
 	 * 
 	 * @param array $array 
 	 * @param array $keylist 
-	 * @return null|array 
+	 * @return null|string|array 
 	 */
-	protected static function getRecursiveKeyFromArray(array $array, array $keylist): ?array
+	protected static function getRecursiveKeyFromArray(array $array, array $keylist)
 	{
 		if (!count($keylist)) {
 			return $array;
@@ -89,6 +89,8 @@ class TypoScriptUtility
 		$firstKey = reset($keylist);
 		if (!isset($array[$firstKey])) {
 			return null;
+		} else if(!is_array($array[$firstKey])) {
+			return $array[$firstKey];
 		} else {
 			return static::getRecursiveKeyFromArray($array[$firstKey], array_slice($keylist, 1));
 		}
