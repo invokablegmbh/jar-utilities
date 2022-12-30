@@ -173,8 +173,49 @@ Handle files and their references.
          'cropped' => [
             'desktop' => 'fileadmin/_processed_/1/my-image-original-max-width-3000.jpg',           
             'mobile' => 'fileadmin/_processed_/1/my-image-original-max-width-920.jpg'
-         ]      
+         ]
+
+         // if the extension "focuspoint" is installed, you also get the following properties
+         'has_focuspoint' => true,
+         'focuspoint' => [
+            'x' => 0.1,
+            'y' => 0.2,
+            'w' => 0.3,
+            'h' => 0.4
+         ]
       ]
+   
+
+-------------------------------------------------
+
+.. php:method:: buildFileArrayByFile($file, $configuration)
+
+   Same as ``buildFileArrayBySysFileReference`` based on a file object
+
+   :param \TYPO3\CMS\Core\Resource\File $file: The file object
+   :param array $configuration: (optional) See :ref:`buildFileArrayBySysFileReference <utilities-FileUtility-buildFileArrayBySysFileReference>` for further details.
+   :returns: File-information array or ``null`` if resource doesn't exist or file is missing.
+
+
+-------------------------------------------------
+
+.. php:method:: buildFileArrayByPath($path, $configuration)
+
+   Same as ``buildFileArrayBySysFileReference`` based on a file path.
+
+   :param string $path: The file path
+   :param array $configuration: (optional) See :ref:`buildFileArrayBySysFileReference <utilities-FileUtility-buildFileArrayBySysFileReference>` for further details.
+   :returns: File-information array or ``null`` if resource doesn't exist or file is missing.
+
+-------------------------------------------------
+
+.. php:method:: getFileByPath($path)
+
+    Returns the File object to a given path.
+
+   :param $path $path: UID of the sys_file_reference record.
+   :returns: File object or ``null`` if resource doesn't exist or file is missing.
+   
 
 -------------------------------------------------
 

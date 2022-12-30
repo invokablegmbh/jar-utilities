@@ -8,11 +8,14 @@ use InvalidArgumentException;
 use RuntimeException;
 use TYPO3\CMS\Core\Imaging\ImageManipulation\CropVariantCollection;
 use TYPO3\CMS\Core\Resource\Exception\ResourceDoesNotExistException;
+use TYPO3\CMS\Core\Resource\File;
 use TYPO3\CMS\Core\Resource\FileReference;
 use TYPO3\CMS\Core\Resource\FileRepository;
 use TYPO3\CMS\Core\Resource\ProcessedFile;
 use TYPO3\CMS\Core\Utility\ArrayUtility;
+use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 use UnexpectedValueException;
 
 /*
@@ -84,6 +87,7 @@ class FileUtility
 	 */
 	public static function buildFileArrayBySysFileReference(?FileReference $fileReference, ?array $configuration = []): ?array
 	{
+		
 		if ($fileReference === null || $fileReference->isMissing()) {
 			return null;
 		}
@@ -120,27 +124,132 @@ class FileUtility
 		}
 
 
-		// part for creating cropped image urls
+		
 		$file = $fileReference->getOriginalFile();
-		if ($file->isImage() && !empty($setup['tcaCropVariants']) && $fileReference->hasProperty('crop')) {
+		if ($file->isImage()) {
+			
+			// part for creating cropped image urls
+			if(!empty($setup['tcaCropVariants']) && $fileReference->hasProperty('crop')) {
 
-			$cropVariantCollection = CropVariantCollection::create((string) $fileReference->getProperty('crop'));
+				$cropVariantCollection = CropVariantCollection::create((string) $fileReference->getProperty('crop'));
+				$cropped = [];
+				foreach ($setup['tcaCropVariants'] as $cropName => $cropVariant) {
+					$cropSettings = $cropVariantCollection->getCropArea($cropName);
+					$processingInstructions = $setup['processingConfigurationForCrop'][$cropName] ?? [];
+					ArrayUtility::mergeRecursiveWithOverrule($processingInstructions, [
+						'crop' => $cropSettings->makeAbsoluteBasedOnFile($file),
+					]);
 
-			$cropped = [];
-			foreach ($setup['tcaCropVariants'] as $cropName => $cropVariant) {
-				$cropSettings = $cropVariantCollection->getCropArea($cropName);
-				$processingInstructions = $setup['processingConfigurationForCrop'][$cropName] ?? [];
-				ArrayUtility::mergeRecursiveWithOverrule($processingInstructions, [
-					'crop' => $cropSettings->makeAbsoluteBasedOnFile($file),
-				]);
-				$cropped[$cropName] = $file->process(ProcessedFile::CONTEXT_IMAGECROPSCALEMASK, $processingInstructions)->getPublicUrl();
+					// special case: if cropping "default" is active, use this cropped image directly as result
+					$croppedUrl = $file->process(ProcessedFile::CONTEXT_IMAGECROPSCALEMASK, $processingInstructions)->getPublicUrl();
+
+					if($cropName === 'default') {
+						$result['url'] = $croppedUrl;
+					} else {
+						$cropped[$cropName] = $croppedUrl;
+					}
+					
+				}
+
+				if(count($cropped)) {
+					$result['cropped'] = $cropped;
+				}
 			}
 
-			$result['cropped'] = $cropped;
+			// Store Focuspoint
+			if(ExtensionManagementUtility::isLoaded('focuspoint')) {
+				$result['has_focuspoint'] = (!empty($file->getProperty('focus_point_x')) && !empty($file->getProperty('focus_point_y')));
+
+				if($result['has_focuspoint']) {
+					$result['focuspoint'] = [
+						'x' => $file->getProperty('focus_point_x'),
+						'y' => $file->getProperty('focus_point_y'),
+						'w' => $file->getProperty('width'),
+						'h' => $file->getProperty('height'),
+					];
+				}
+			}
 		}
 
 		return $result;
 	}
+
+
+	/**
+	 * Returns the File object to a given path.
+	 * 
+	 * @param string $path Path to the file
+	 * @return null|File File objectay or ``null`` if resource doesn't exist or file is missing.
+	 * @throws InvalidArgumentException 
+	 */
+	public static function getFileByPath(string $path): ?File {
+
+		$resourceFactory = GeneralUtility::makeInstance(\TYPO3\CMS\Core\Resource\ResourceFactory::class);
+
+		try {
+			$file = $resourceFactory->retrieveFileOrFolderObject($path);
+		} catch (\TYPO3\CMS\Core\Resource\Exception\ResourceDoesNotExistException $e) {
+			$file = null;
+		}
+
+		return $file;
+	}
+
+
+
+	/**
+	 * @param null|File $file The file object
+	 * @param null|array $configuration See Manual
+	 * @return null|array File-information array or ``null`` if resource doesn't exist or file is missing.
+	 * @throws InvalidArgumentException 
+	 * @throws RuntimeException 
+	 * @throws UnexpectedValueException 
+	 */
+	public static function buildFileArrayByFile(?File $file, ?array $configuration = []): ?array
+	{	
+		if(empty($file)) {
+			return null;
+		}
+
+		$resourceFactory = GeneralUtility::makeInstance(\TYPO3\CMS\Core\Resource\ResourceFactory::class);
+		$fileReference = $resourceFactory->createFileReferenceObject(
+			[
+				'uid_local' => $file->getUid(),
+				'uid_foreign' => uniqid('NEW_'),
+				'uid' => uniqid('NEW_'),
+				'crop' => json_encode([
+					'default' => [
+						'cropArea' => [
+							'x' => 0,
+							'y' => 0,
+							'width' => 1,
+							'height' => 1,
+						]
+					]
+				]),
+				'link' => null,
+			]
+		);
+
+		return static::buildFileArrayBySysFileReference($fileReference, $configuration);
+	}
+
+
+	/**
+	 * @param null|string $path The file path
+	 * @param null|array $configuration See Manual
+	 * @return null|array File-information array or ``null`` if resource doesn't exist or file is missing.
+	 * @throws InvalidArgumentException 
+	 * @throws RuntimeException 
+	 * @throws UnexpectedValueException 
+	 */
+	public static function buildFileArrayByPath(?string $path, ?array $configuration = []): ?array
+	{
+		return static::buildFileArrayByFile(static::getFileByPath($path), $configuration);
+	}
+
+
+
 
 	/**
 	 * Converts filesizes in a human readable format.
