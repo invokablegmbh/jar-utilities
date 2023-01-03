@@ -71,7 +71,7 @@ class LocalizationProcessor implements DataProcessorInterface
         }
 
         if (!empty($processorConfiguration['as'])) {
-            if(!is_array($processedData[$processorConfiguration['as']])) {
+            if(!isset($processedData[$processorConfiguration['as']]) ) {
                 $processedData[$processorConfiguration['as']] = [];
             }
             ArrayUtility::mergeRecursiveWithOverrule($processedData[$processorConfiguration['as']], $result);
