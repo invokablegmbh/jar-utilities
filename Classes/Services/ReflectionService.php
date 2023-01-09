@@ -383,7 +383,7 @@ class ReflectionService
 						}
 
 						// set currentLanguage to the language of the row
-						$currentLanguageUid = $row['sys_language_uid'];
+						$currentLanguageUid = $row['sys_language_uid'] ?? 0;
 
 						// Load relations to other tables
 						if (!$resolveRelations) {
