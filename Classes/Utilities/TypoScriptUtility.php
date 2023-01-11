@@ -48,7 +48,7 @@ class TypoScriptUtility
 		if (($ts_array = $cache->get('ts', $hash)) === false) {
 			if ($pageUid === null && TYPO3_MODE === 'FE') {
 				$setup = $GLOBALS['TSFE']->tmpl->setup;
-			} else if ($pageUid) {
+			} else {
 				$setup = static::loadTypoScript($pageUid);
 			}
 
@@ -110,9 +110,18 @@ class TypoScriptUtility
 		// Bloody fallback to first used Page, if page is emtpy
 		if ($pageUid === null) {
 			$queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable('pages')->createQueryBuilder();
-			$queryBuilder->select('uid')->from('pages')->setMaxResults(1);
-			$pageUid = reset($queryBuilder->execute());
+			$pageUid = $queryBuilder
+				->select('uid')
+				->from('pages')
+				->setMaxResults(1)
+				->executeQuery()
+				->fetchOne();
 		}
+
+		if(empty($pageUid)) {
+			return [];
+		}
+
 		$pageUid = intval($pageUid);
 		$rootLineUtility = GeneralUtility::makeInstance(RootlineUtility::class, $pageUid);
 		$TSObj = GeneralUtility::makeInstance(ExtendedTemplateService::class);
