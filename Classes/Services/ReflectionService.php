@@ -154,6 +154,12 @@ class ReflectionService
 		]
 		...
 	*/
+	
+	/**
+	 * List of php small scale hooks after a element is reflected
+	 * @var array
+	 */
+	private array $fieldFinisherMethods = [];
 
 	/**
 	 * Tablebased list of related children for collection loads of relations
@@ -526,6 +532,20 @@ class ReflectionService
 						//DebuggerUtility::var_dump($config, 'not handled yet');
 						$result[$targetKey] = $rawValue;
 				}
+
+				$params = [
+					'row' => $row,
+					'table' => $table,
+					'uid' => $uid,
+					'tcaColumn' => $tcaColumn,
+					'tcaConfig' => $config,
+					'targetKey' => $targetKey,
+				];
+
+				foreach ($this->fieldFinisherMethods as $finisherMethod) {
+					$params['value'] = $result[$targetKey];
+					$result[$targetKey] = GeneralUtility::callUserFunction($finisherMethod, $params, $this);
+				}
 			}
 		}
 
@@ -769,6 +789,12 @@ class ReflectionService
 			$this->setDebug((bool) $configuration['debug']);
 		}
 
+		if(isset($configuration['finisher'])) {
+			if (isset($configuration['finisher']['field']) && is_array($configuration['finisher']['field'])) {
+				$this->setFieldFinisherMethods($configuration['finisher']['field']);
+			}
+		}
+
 		return $this;
 	}
 
@@ -982,6 +1008,30 @@ class ReflectionService
 	public function setDebug(bool $debug)
 	{
 		$this->debug = $debug;
+
+		return $this;
+	}
+
+	/**
+	 * Get list of php small scale hooks after a element is reflected
+	 *
+	 * @return  array
+	 */ 
+	public function getFieldFinisherMethods()
+	{
+		return $this->fieldFinisherMethods;
+	}
+
+	/**
+	 * Set list of php small scale hooks after a element is reflected
+	 *
+	 * @param  array  $fieldFinisherMethods  List of php small scale hooks after a element is reflected
+	 *
+	 * @return  self
+	 */ 
+	public function setFieldFinisherMethods(array $fieldFinisherMethods)
+	{
+		$this->fieldFinisherMethods = $fieldFinisherMethods;
 
 		return $this;
 	}

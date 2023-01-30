@@ -52,6 +52,11 @@ use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
  *                 }
  *             }
  *         }
+ *         finisher {
+ *             field {
+ *                10 = \TYPO3\Bla\Blub->handleSth
+ *             }
+ *         }
  *     }
  * }
  */
