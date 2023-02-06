@@ -331,7 +331,9 @@ class ReflectionService
 						} else {
 							if(!empty($rawValue)) {
 								$result[$targetKey] = FormatUtility::renderRteContent($rawValue);
-							}							
+							} else {
+								$result[$targetKey] = $rawValue;
+							}
 						}
 						break;
 
