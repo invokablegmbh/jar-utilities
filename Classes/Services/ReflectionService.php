@@ -154,7 +154,7 @@ class ReflectionService
 		]
 		...
 	*/
-	
+
 	/**
 	 * List of php small scale hooks after a element is reflected
 	 * @var array
@@ -200,9 +200,9 @@ class ReflectionService
 		foreach ($rows as $key => $row) {
 			$result[$key] = $this->buildArrayByRow($row, $table, $maxDepth, false);
 		}
-		
+
 		// handle collection load of relations
-		while (count($this->unloadedRelatedItems) + count($this->unloadedRelatedChildren)) {			
+		while (count($this->unloadedRelatedItems) + count($this->unloadedRelatedChildren)) {
 			$this->collectUnloadedElements();
 		}
 
@@ -329,7 +329,7 @@ class ReflectionService
 						if (!array_key_exists('enableRichtext', $config)) {
 							$result[$targetKey] = nl2br($rawValue ?? '');
 						} else {
-							if(!empty($rawValue)) {
+							if (!empty($rawValue)) {
 								$result[$targetKey] = FormatUtility::renderRteContent($rawValue);
 							} else {
 								$result[$targetKey] = $rawValue;
@@ -367,7 +367,7 @@ class ReflectionService
 						// handle sys_file_references directly, no recursive resolving
 						if (array_key_exists('foreign_table', $config) && $config['foreign_table'] === 'sys_file_reference') {
 							$relationHandler = GeneralUtility::makeInstance(RelationHandler::class);
-							$relationHandler->start($rawValue, $foreignTable, $config['MM'] ?? '', $uid, $table, $config);						
+							$relationHandler->start($rawValue, $foreignTable, $config['MM'] ?? '', $uid, $table, $config);
 							$relationHandler->getFromDB();
 							$resolvedItemArray = $relationHandler->getResolvedItemArray();
 
@@ -395,14 +395,14 @@ class ReflectionService
 
 						// Load relations to other tables
 						if (!$resolveRelations) {
-							
+
 							// resolve collected parent / child relations
-							if (!array_key_exists('MM', $config) && $foreignTable && array_key_exists('foreign_field', $config)) {							
+							if (!array_key_exists('MM', $config) && $foreignTable && array_key_exists('foreign_field', $config)) {
 
 								// switch to the real UID for translated elements
-								if($currentLanguageUid !== 0 && !empty($row['_LOCALIZED_UID'])) {
+								if ($currentLanguageUid !== 0 && !empty($row['_LOCALIZED_UID'])) {
 									$uid = $row['_LOCALIZED_UID'];
-								}								
+								}
 
 								if (is_array($this->loadedRelatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid] ?? null)) {
 									// is allready loaded?
@@ -433,20 +433,27 @@ class ReflectionService
 									if (!key_exists($foreignRelationTable, $this->loadedRelatedItems)) {
 										$this->loadedRelatedItems[$foreignRelationTable] = [];
 									}
-
-
-									if (!empty($this->loadedRelatedItems[$foreignRelationTable][$foreignRelationId])) {
-										// is allready loaded?
-										$this->relatedItems[$foreignRelationTable][$foreignRelationId] = &$this->loadedRelatedItems[$foreignRelationTable][$foreignRelationId];
-									} else {
-										// mark for collection loading
-										$this->unloadedRelatedItems[$foreignRelationTable][$foreignRelationId] = [
-											'sys_language_uid' => $currentLanguageUid,
-										];
-										$this->relatedItems[$foreignRelationTable][$foreignRelationId] = &$this->unloadedRelatedItems[$foreignRelationTable][$foreignRelationId];
+									if (!key_exists($currentLanguageUid, $this->relatedItems[$foreignRelationTable])) {
+										$this->relatedItems[$foreignRelationTable][$currentLanguageUid] = [];
+									}
+									if (!key_exists($currentLanguageUid, $this->unloadedRelatedItems[$foreignRelationTable])) {
+										$this->unloadedRelatedItems[$foreignRelationTable][$currentLanguageUid] = [];
+									}
+									if (!key_exists($currentLanguageUid, $this->loadedRelatedItems[$foreignRelationTable])) {
+										$this->loadedRelatedItems[$foreignRelationTable][$currentLanguageUid] = [];
 									}
 
-									$relationList[] = &$this->relatedItems[$foreignRelationTable][$foreignRelationId];
+
+									if (!empty($this->loadedRelatedItems[$foreignRelationTable][$currentLanguageUid][$foreignRelationId])) {
+										// is allready loaded?
+										$this->relatedItems[$foreignRelationTable][$currentLanguageUid][$foreignRelationId] = &$this->loadedRelatedItems[$foreignRelationTable][$currentLanguageUid][$foreignRelationId];
+									} else {
+										// mark for collection loading
+										$this->unloadedRelatedItems[$foreignRelationTable][$currentLanguageUid][$foreignRelationId] = true;
+										$this->relatedItems[$foreignRelationTable][$currentLanguageUid][$foreignRelationId] = &$this->unloadedRelatedItems[$foreignRelationTable][$currentLanguageUid][$foreignRelationId];
+									}
+
+									$relationList[] = &$this->relatedItems[$foreignRelationTable][$currentLanguageUid][$foreignRelationId];
 								}
 								$result[$targetKey] = $relationList;
 							}
@@ -455,10 +462,10 @@ class ReflectionService
 							$relationHandler->start($rawValue, $foreignTable, $config['MM'] ?? '', $uid, $table, $config);
 							// thus the relation handler works only with elements in the default language, just use in that case,
 							// otherwise load the elements on our own
-							if($currentLanguageUid === 0) {
-								$relationHandler->setFetchAllFields(true);								
+							if ($currentLanguageUid === 0) {
+								$relationHandler->setFetchAllFields(true);
 							}
-							
+
 							// don't fetch hidden and deleted items
 							$queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable($foreignTable)->createQueryBuilder();
 							$relationHandler->additionalWhere[$foreignTable] = $queryBuilder->expr()->eq('hidden', 0);
@@ -483,8 +490,8 @@ class ReflectionService
 									$selectUids = IteratorUtility::pluck($resolvedItemArray, 'uid');
 
 									$foreignItems = [];
-									
-									if ($currentLanguageUid === 0) {									
+
+									if ($currentLanguageUid === 0) {
 										// default language, loaded via relation handler
 										foreach ($resolvedItemArray as $resolvedItem) {
 											$foreignRow = $resolvedItem['record'] ?? $dbResult[$resolvedItem['table']][$resolvedItem['uid']];
@@ -493,7 +500,7 @@ class ReflectionService
 										}
 									} else {
 										// load translated elements on our own									
-										$connectionPool = GeneralUtility::makeInstance(ConnectionPool::class);	
+										$connectionPool = GeneralUtility::makeInstance(ConnectionPool::class);
 										$queryBuilder = $connectionPool->getQueryBuilderForTable($foreignTable);
 										$queryResult = $queryBuilder
 											->select('*')
@@ -502,15 +509,14 @@ class ReflectionService
 												$this->createLanguageContraints($queryBuilder, $selectUids, $foreignTable, $currentLanguageUid)
 											)
 											->execute();
-										while ($foreignRow = $queryResult->fetch()) {											
+										while ($foreignRow = $queryResult->fetch()) {
 											$sortUid = array_search($foreignRow['uid'], $selectUids);
 											$foreignItems[$sortUid] = &$this->buildArrayByRow($foreignRow, $foreignTable, $maxDepth - 1);
-										}	
-									}									
+										}
+									}
 
 									ksort($foreignItems);
 									$result[$targetKey] = $foreignItems;
-
 								} else {
 									// TODO: Clean this up, or delete it
 									$foreignItems = [];
@@ -563,7 +569,7 @@ class ReflectionService
 
 	private function loadUnloadedChildItems()
 	{
-		$connectionPool = GeneralUtility::makeInstance(ConnectionPool::class);	
+		$connectionPool = GeneralUtility::makeInstance(ConnectionPool::class);
 
 		foreach ($this->unloadedRelatedChildren as $languageUid => $tables) {
 			foreach ($tables as $table => $foreign_fields) {
@@ -608,15 +614,10 @@ class ReflectionService
 	{
 		$connectionPool = GeneralUtility::makeInstance(ConnectionPool::class);
 
-		foreach ($this->unloadedRelatedItems as $table => $items) {
+		foreach ($this->unloadedRelatedItems as $table => $languages) {
 
-			// split items by language and load them separatly
-			$languageItems = [];
-			foreach ($items as $id => $item) {
-				$languageItems[$item['sys_language_uid'] ?? -1][] = $id;
-			}
-
-			foreach ($languageItems as $languageUid => $ids) {
+			foreach ($languages as $languageUid => $languageItems) {
+				$ids = array_keys($languageItems);
 
 				if (!is_array($ids) || !count($ids)) {
 					continue;
@@ -641,14 +642,15 @@ class ReflectionService
 				}
 
 				foreach ($ids as $id) {
-					if(array_key_exists($id, $rows)) {
+					// check if dataset still exist
+					if (array_key_exists($id, $rows)) {
 						$reflectedItem = &$this->buildArrayByRow($rows[$id], $table, 8, false);
 					} else {
 						$reflectedItem = null;
 					}
-					$this->loadedRelatedItems[$table][$id] = $reflectedItem;
-					$this->relatedItems[$table][$id] = $reflectedItem;
-					
+
+					$this->loadedRelatedItems[$table][$languageUid][$id] = $reflectedItem;
+					$this->relatedItems[$table][$languageUid][$id] = $reflectedItem;
 				}
 			}
 
@@ -791,7 +793,7 @@ class ReflectionService
 			$this->setDebug((bool) $configuration['debug']);
 		}
 
-		if(isset($configuration['finisher'])) {
+		if (isset($configuration['finisher'])) {
 			if (isset($configuration['finisher']['field']) && is_array($configuration['finisher']['field'])) {
 				$this->setFieldFinisherMethods($configuration['finisher']['field']);
 			}
@@ -1018,7 +1020,7 @@ class ReflectionService
 	 * Get list of php small scale hooks after a element is reflected
 	 *
 	 * @return  array
-	 */ 
+	 */
 	public function getFieldFinisherMethods()
 	{
 		return $this->fieldFinisherMethods;
@@ -1030,7 +1032,7 @@ class ReflectionService
 	 * @param  array  $fieldFinisherMethods  List of php small scale hooks after a element is reflected
 	 *
 	 * @return  self
-	 */ 
+	 */
 	public function setFieldFinisherMethods(array $fieldFinisherMethods)
 	{
 		$this->fieldFinisherMethods = $fieldFinisherMethods;
