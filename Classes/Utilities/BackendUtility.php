@@ -67,6 +67,10 @@ class BackendUtility
 	{
 		if(!array_key_exists('TYPO3_REQUEST', $GLOBALS) || !$GLOBALS['TYPO3_REQUEST']) {
 			return null;
+
+			if (!empty(GeneralUtility::_GP('id'))) {
+				return (int) GeneralUtility::_GP('id');
+			}
 		}
 
 		if($GLOBALS['TYPO3_REQUEST'] 
