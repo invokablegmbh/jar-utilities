@@ -210,8 +210,6 @@ class ReflectionService
 				$this->collectUnloadedElements();
 			}
 
-			DebuggerUtility::var_dump('UNCACHED!');
-
 			$cache->set($identifier, $result);
 		}
 
