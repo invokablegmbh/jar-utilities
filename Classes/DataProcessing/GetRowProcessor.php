@@ -60,7 +60,7 @@ class GetRowProcessor implements DataProcessorInterface
         }
         
         if (!empty($populatedProcessorConfiguration['as'])) {
-            if (!is_array($processedData[$processorConfiguration['as']])) {
+            if (!isset($processedData[$processorConfiguration['as']]) || !is_array($processedData[$processorConfiguration['as']])) {
                 $processedData[$processorConfiguration['as']] = [];
             }
             ArrayUtility::mergeRecursiveWithOverrule($processedData[$processorConfiguration['as']], $result);
