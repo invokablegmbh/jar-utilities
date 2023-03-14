@@ -43,7 +43,6 @@ class TCEmainHook implements SingletonInterface
     {        
         $this->connectionPool = $connectionPool;
         $this->initReverseRelationTca();
-        die();
     }
 
     /**
@@ -57,6 +56,11 @@ class TCEmainHook implements SingletonInterface
         }		
 
         foreach ($GLOBALS['TCA'] as $table => $tca) {
+
+            // check for tables with valid tstamps
+            if (!array_key_exists('ctrl', $tca) || !array_key_exists('tstamp', $tca['ctrl'])) {
+                continue;
+            }            
 
             foreach ($tca['columns'] ?? [] as $column => $columnConfig) {
                 if (!is_array($columnConfig['config'])) {
@@ -88,23 +92,20 @@ class TCEmainHook implements SingletonInterface
                     if (!array_key_exists($foreignTable, $GLOBALS['TCA']) || !array_key_exists('tstamp', $GLOBALS['TCA'][$foreignTable]['ctrl'])) {
                         continue;
                     }
-                    $this->reverseRelationTca[$foreignTable] = [
-                        'tstampColumn' => $GLOBALS['TCA'][$foreignTable]['ctrl']['tstamp'],
+                    $this->reverseRelationTca[$foreignTable] = [                        
                         'parentRelations' => []                    
                     ];                    
                 }
 
                 // create entry for parent table relation
-                $this->reverseRelationTca[$foreignTable]['parentRelations'][] = [ 
+                $this->reverseRelationTca[$foreignTable]['parentRelations'][] = [                    
                     'table' => $table,
-                    'field' => $column,                   
+                    'field' => $column,
+                    'tstampColumn' => $tca['ctrl']['tstamp'],
                     'tcaconfig' => $config
                 ];
             }
         }
-
-        DebuggerUtility::var_dump($this->reverseRelationTca);
-        die();
     }
 
 
@@ -184,8 +185,15 @@ class TCEmainHook implements SingletonInterface
     {
 
         $id = (int) $id;
-        // Generel Update when DB Queries are performed (Update Parent when Inline Elements also Change - triggers Rebuild of their output Cache)
+        // General Update when DB Queries are performed (Update Parent when Inline Elements also Change - triggers Rebuild of their output Cache)
         if ($status == 'update') {
+
+            // get reverse relations
+            $reverseRelations = $this->reverseRelationTca[$table]['parentRelations'] ?? [];
+
+            DebuggerUtility::var_dump($reverseRelations);
+            die();
+
             if ($table == 'tt_content') {
                 $this->updateTimestamp('tt_content', $id);
             } else {
