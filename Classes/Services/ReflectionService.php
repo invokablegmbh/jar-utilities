@@ -195,9 +195,23 @@ class ReflectionService
 	 */
 	public function buildArrayByRows(array $rows, string $table, int $maxDepth = 8): array
 	{
-		// create a hash for rows, table and maxDepth
-		$identifier = md5(serialize($rows) . $table . $maxDepth);
+		// create a hash for rows, table and maxDepth and all current settings
 
+		$identifier = md5(
+			serialize($rows) .
+				$table .
+				$maxDepth .
+				serialize($this->buildingConfiguration) .
+				serialize($this->columnBlacklist) .
+				serialize($this->tableColumnBlacklist) .
+				serialize($this->tableColumnWhitelist) .
+				serialize($this->tableColumnRemoveablePrefixes) .
+				serialize($this->tableColumnRemapping) .
+				serialize($this->fieldFinisherMethods) .
+				serialize($this->relatedItems) .
+				serialize($this->relatedChildren) .
+				GeneralUtility::_GP('frontend_editing')
+		);
 		$cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('jar_utilities_reflection');
 		if (($result = $cache->get($identifier)) === false) {
 			$result = [];
@@ -369,7 +383,7 @@ class ReflectionService
 							break;
 						}
 
-						
+
 
 						$foreignTable = ($config['type'] === 'group') ? $config['allowed'] : $config['foreign_table'];
 
