@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Jar\Utilities\Services;
 
-use Doctrine\DBAL\DBALException;
 use InvalidArgumentException;
 use RuntimeException;
 use ReflectionException;
@@ -14,9 +13,9 @@ use Jar\Utilities\Utilities\FrontendUtility;
 use Jar\Utilities\Utilities\IteratorUtility;
 use Jar\Utilities\Utilities\TcaUtility;
 use Jar\Utilities\Utilities\WildcardUtility;
+use TYPO3\CMS\Core\Cache\CacheManager;
 use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
-use TYPO3\CMS\Core\Database\Platform\PlatformInformation;
 use TYPO3\CMS\Core\Database\Query\Expression\CompositeExpression;
 use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 use TYPO3\CMS\Core\Database\RelationHandler;
@@ -196,14 +195,36 @@ class ReflectionService
 	 */
 	public function buildArrayByRows(array $rows, string $table, int $maxDepth = 8): array
 	{
-		$result = [];
-		foreach ($rows as $key => $row) {
-			$result[$key] = $this->buildArrayByRow($row, $table, $maxDepth, false);
-		}
+		// create a hash for rows, table and maxDepth and all current settings
 
-		// handle collection load of relations
-		while (count($this->unloadedRelatedItems) + count($this->unloadedRelatedChildren)) {
-			$this->collectUnloadedElements();
+		$identifier = md5(
+			serialize($rows) .
+				$table .
+				$maxDepth .
+				serialize($this->buildingConfiguration) .
+				serialize($this->columnBlacklist) .
+				serialize($this->tableColumnBlacklist) .
+				serialize($this->tableColumnWhitelist) .
+				serialize($this->tableColumnRemoveablePrefixes) .
+				serialize($this->tableColumnRemapping) .
+				serialize($this->fieldFinisherMethods) .
+				serialize($this->relatedItems) .
+				serialize($this->relatedChildren) .
+				GeneralUtility::_GP('frontend_editing')
+		);
+		$cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('jar_utilities_reflection');
+		if (($result = $cache->get($identifier)) === false) {
+			$result = [];
+			foreach ($rows as $key => $row) {
+				$result[$key] = $this->buildArrayByRow($row, $table, $maxDepth, false);
+			}
+
+			// handle collection load of relations
+			while (count($this->unloadedRelatedItems) + count($this->unloadedRelatedChildren)) {
+				$this->collectUnloadedElements();
+			}
+
+			$cache->set($identifier, $result);
 		}
 
 		return $result;
@@ -355,12 +376,14 @@ class ReflectionService
 
 						// just return the raw value(s) of flat selects or group which aren't handle db-relations
 						if (
-							($config['type'] === 'group' && array_key_exists('internal_type', $config) && $config['internal_type'] !== 'db') ||
+							($config['type'] === 'group' && (!array_key_exists('allowed', $config) || (array_key_exists('internal_type', $config) && $config['internal_type'] !== 'db'))) ||
 							($config['type'] !== 'group' && empty($config['foreign_table']))
 						) {
 							$result[$targetKey] = ((int) ($config['maxitems'] ?? 0) > 1) ? GeneralUtility::trimExplode(',', $rawValue, true) : $rawValue;
 							break;
 						}
+
+
 
 						$foreignTable = ($config['type'] === 'group') ? $config['allowed'] : $config['foreign_table'];
 
