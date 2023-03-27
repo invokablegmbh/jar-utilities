@@ -417,7 +417,7 @@ class ReflectionService
 						$currentLanguageUid = $row['sys_language_uid'] ?? 0;
 
 						// Load relations to other tables
-						if (!$resolveRelations) {
+						if (!$resolveRelations) {						
 
 							// resolve collected parent / child relations
 							if (!array_key_exists('MM', $config) && $foreignTable && array_key_exists('foreign_field', $config)) {
@@ -427,19 +427,24 @@ class ReflectionService
 									$uid = $row['_LOCALIZED_UID'];
 								}
 
-								if (is_array($this->loadedRelatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid] ?? null)) {
+								$foreignField = $config['foreign_field'];
+								$foreignSorting = $config['foreign_sortby'] ?? '';
+
+								if (is_array($this->loadedRelatedChildren[$currentLanguageUid][$foreignTable][$foreignField][$foreignSorting][$uid] ?? null)) {
 									// is allready loaded?
-									$this->relatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid] = &$this->loadedRelatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid];
+									$this->relatedChildren[$currentLanguageUid][$foreignTable][$foreignField][$foreignSorting][$uid] = &$this->loadedRelatedChildren[$currentLanguageUid][$foreignTable][$foreignField][$foreignSorting][$uid];
 								} else {
 									// mark for collection loading
-									$this->unloadedRelatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid] = [];
-									$this->relatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid] = &$this->unloadedRelatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid];
+									$this->unloadedRelatedChildren[$currentLanguageUid][$foreignTable][$foreignField][$foreignSorting][$uid] = [
+										'config' => $config,
+									];
+									$this->relatedChildren[$currentLanguageUid][$foreignTable][$foreignField][$foreignSorting][$uid] = &$this->unloadedRelatedChildren[$currentLanguageUid][$foreignTable][$foreignField][$foreignSorting][$uid];
 								}
 
-								$result[$targetKey] = &$this->relatedChildren[$currentLanguageUid][$foreignTable][$config['foreign_field']][$uid];
+								$result[$targetKey] = &$this->relatedChildren[$currentLanguageUid][$foreignTable][$foreignField][$foreignSorting][$uid];
 							} else {
 								// UID based mode
-								$relationHandler = GeneralUtility::makeInstance(RelationHandler::class);
+								$relationHandler = GeneralUtility::makeInstance(RelationHandler::class);								
 								$relationHandler->start($rawValue, $foreignTable, $config['MM'] ?? '', $uid, $table, $config);
 								$relationList = [];
 								foreach ($relationHandler->itemArray as $item) {
@@ -595,33 +600,41 @@ class ReflectionService
 		$connectionPool = GeneralUtility::makeInstance(ConnectionPool::class);
 
 		foreach ($this->unloadedRelatedChildren as $languageUid => $tables) {
-			foreach ($tables as $table => $foreign_fields) {
-				foreach ($foreign_fields as $foreign_field => $items) {
-					$ids = array_keys($items);
-					$idChunks = array_chunk($ids, 1024 / 2);
-					$groups = [];
+			foreach ($tables as $table => $foreignFields) {
+				foreach ($foreignFields as $foreignField => $foreignSortings) {
+				 	foreach ($foreignSortings as $foreignSorting => $items) {
+						$ids = array_keys($items);
+						$idChunks = array_chunk($ids, 1024 / 2);
+						$groups = [];
 
-					foreach ($idChunks as $idChunk) {
+						foreach ($idChunks as $idChunk) {
 
-						$queryBuilder = $connectionPool->getQueryBuilderForTable($table);
-						$queryResult = $queryBuilder
-							->select('*')
-							->from($table)
-							->where(
-								$queryBuilder->expr()->in($foreign_field, $queryBuilder->createNamedParameter($idChunk, Connection::PARAM_INT_ARRAY))
-							)
-							->execute();
+							$queryBuilder = $connectionPool->getQueryBuilderForTable($table);
+							$query = $queryBuilder
+								->select('*')
+								->from($table)
+								->where(
+									$queryBuilder->expr()->in($foreignField, $queryBuilder->createNamedParameter($idChunk, Connection::PARAM_INT_ARRAY))
+								);
 
-						while ($row = $queryResult->fetch()) {
-							$groups[$row[$foreign_field]][] = $this->buildArrayByRow($row, $table, 8, false);
+							// order result by sorting field (if set)
+							if ($foreignSorting) {
+								$query->orderBy($foreignSorting);
+							}
+
+							$queryResult = $query->execute();
+
+							while ($row = $queryResult->fetch()) {
+								$groups[$row[$foreignField]][] = $this->buildArrayByRow($row, $table, 8, false);
+							}
+						}
+
+						foreach ($groups as $parentId => $items) {
+							$this->loadedRelatedChildren[$languageUid][$table][$foreignField][$foreignSorting][$parentId] = $this->relatedChildren[$languageUid][$table][$foreignField][$foreignSorting][$parentId] = $items;
 						}
 					}
 
-					foreach ($groups as $parentId => $items) {
-						$this->loadedRelatedChildren[$languageUid][$table][$foreign_field][$parentId] = $this->relatedChildren[$languageUid][$table][$foreign_field][$parentId] = $items;
-					}
-
-					unset($this->unloadedRelatedChildren[$languageUid][$table][$foreign_field]);
+					unset($this->unloadedRelatedChildren[$languageUid][$table][$foreignField]);
 					if (!count($this->unloadedRelatedChildren[$languageUid][$table])) {
 						unset($this->unloadedRelatedChildren[$languageUid][$table]);
 					}
