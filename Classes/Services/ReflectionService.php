@@ -399,6 +399,16 @@ class ReflectionService
 								if (!empty($resolvedItem['uid'])) {
 									$fileBuidlingConfiguration = $this->buildingConfiguration['file'] ?? [];
 									$cropVariants = $config['overrideChildTca']['columns']['crop']['config']['cropVariants'] ?? [];
+
+									// fallback to default cropVariants
+									$defaultCropVariants = $GLOBALS['TCA']['sys_file_reference']['columns']['crop']['config']['cropVariants'] ?? [];
+									ArrayUtility::mergeRecursiveWithOverrule($cropVariants, $defaultCropVariants);
+									if(empty($cropVariants)) {									
+										$cropVariants = [
+											'default' => []
+										];
+									}
+
 									ArrayUtility::mergeRecursiveWithOverrule($fileBuidlingConfiguration, [
 										'tcaCropVariants' => $cropVariants
 									]);
