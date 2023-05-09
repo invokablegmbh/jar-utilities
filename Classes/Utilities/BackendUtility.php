@@ -66,11 +66,11 @@ class BackendUtility
 	public static function currentPageUid(): ?int
 	{
 		if(!array_key_exists('TYPO3_REQUEST', $GLOBALS) || !$GLOBALS['TYPO3_REQUEST']) {
-			return null;
-
 			if (!empty(GeneralUtility::_GP('id'))) {
 				return (int) GeneralUtility::_GP('id');
 			}
+			
+			return null;
 		}
 
 		if($GLOBALS['TYPO3_REQUEST'] 
