@@ -65,36 +65,32 @@ class BackendUtility
 	 * */
 	public static function currentPageUid(): ?int
 	{
-		if(!array_key_exists('TYPO3_REQUEST', $GLOBALS) || !$GLOBALS['TYPO3_REQUEST']) {
+		if (
+			isset($GLOBALS)
+			&& array_key_exists('TYPO3_REQUEST', $GLOBALS)
+			&& $GLOBALS['TYPO3_REQUEST']->getAttribute('route')
+			&& $GLOBALS['TYPO3_REQUEST']->getAttribute('route')->getOption('moduleName')
+			&& strpos($GLOBALS['TYPO3_REQUEST']->getAttribute('route')->getOption('moduleName'), 'file_') !==  false
+		) {
+			return null;
+		} else {
 			if (!empty(GeneralUtility::_GP('id'))) {
 				return (int) GeneralUtility::_GP('id');
 			}
-			
-			return null;
-		}
 
-		if($GLOBALS['TYPO3_REQUEST'] 
-			&& $GLOBALS['TYPO3_REQUEST']->getAttribute('route') 
-			&& $GLOBALS['TYPO3_REQUEST']->getAttribute('route')->getOption('moduleName') 
-			&& strpos($GLOBALS['TYPO3_REQUEST']->getAttribute('route')->getOption('moduleName'), 'file_') !==  false) {
-			return null;
-		}
+			if (!empty(GeneralUtility::_GP('returnUrl'))) {
+				parse_str(end(explode('?', GeneralUtility::_GP('returnUrl'))), $output);
+				if (!empty($output['id'])) {
+					return (int) $output['id'];
+				}
+			}
 
-		if (!empty(GeneralUtility::_GP('id'))) {
-			return (int) GeneralUtility::_GP('id');
-		}
-
-		if (!empty(GeneralUtility::_GP('returnUrl'))) {			
-			parse_str(end(explode('?', GeneralUtility::_GP('returnUrl'))), $output);
-			if (!empty($output['id'])) {
-				return (int) $output['id'];
+			if (isset($GLOBALS['TSFE'])) {
+				return (int) $GLOBALS['TSFE']->id;
 			}
 		}
-
-		if(isset($GLOBALS['TSFE'])) {
-			return (int) $GLOBALS['TSFE']->id;
-		}
-
+		
+		
 		return null;
 	}
 
