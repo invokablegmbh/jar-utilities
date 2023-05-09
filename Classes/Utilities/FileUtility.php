@@ -112,6 +112,7 @@ class FileUtility
 			'title' => $fileReference->getTitle(),
 			'description' => $fileReference->getDescription(),
 			'link' => FormatUtility::buildLinkArray($fileReference->getLink()),
+			'originalUrl' => $url,
 		);
 
 		if ($setup['showDetailedInformations']) {
