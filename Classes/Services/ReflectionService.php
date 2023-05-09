@@ -433,8 +433,8 @@ class ReflectionService
 							if (!array_key_exists('MM', $config) && $foreignTable && array_key_exists('foreign_field', $config)) {
 
 								// switch to the real UID for translated elements
-								if ($currentLanguageUid !== 0 && !empty($row['_LOCALIZED_UID'])) {
-									$uid = $row['_LOCALIZED_UID'];
+								if ($currentLanguageUid !== 0) {
+									$uid = $row['_LOCALIZED_UID'] ?? $row['_PAGES_OVERLAY_UID'] ?? $uid;
 								}
 
 								$foreignField = $config['foreign_field'];
