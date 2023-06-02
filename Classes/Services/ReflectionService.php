@@ -589,6 +589,7 @@ class ReflectionService
 
 									$params = [
 										'foreignTable' => $foreignTable,
+										'tcaConfig' => $config,
 									];
 									foreach ($this->relationFinisherMethods as $finisherMethod) {
 										$params['items'] = $foreignItems;
@@ -605,7 +606,9 @@ class ReflectionService
 										}
 									}
 									
-									$params = [];
+									$params = [
+										'tcaConfig' => $config,
+									];
 									foreach ($this->relationFinisherMethods as $finisherMethod) {
 										$params['items'] = $foreignItems;
 										$foreignItems = GeneralUtility::callUserFunction($finisherMethod, $params, $this);
