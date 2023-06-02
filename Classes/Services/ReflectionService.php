@@ -161,6 +161,12 @@ class ReflectionService
 	private array $fieldFinisherMethods = [];
 
 	/**
+	 * List of php small scale hooks after a relation is reflected
+	 * @var array
+	 */
+	private array $relationFinisherMethods = [];
+
+	/**
 	 * Tablebased list of related children for collection loads of relations
 	 *
 	 * @var array
@@ -182,49 +188,69 @@ class ReflectionService
 	private array $loadedRelatedChildren = [];
 
 	/**
+	 * Enables result cache of buildArrayByRows
+	 *
+	 * @var bool
+	 */
+	private bool $enableCache = true;
+
+	/**
+	 * Just load basic fields of related childrens
+	 *
+	 * @var bool
+	 */
+	private bool $fetchBasicRelationFields = false;
+
+	/**
 	 * Reflects a list of record rows.
 	 *
 	 * @param array $rows The record list.
 	 * @param string $table The tablename.
 	 * @param int $maxDepth The maximum depth at which related elements are loaded (default is 8).
+	 * @param bool $resolveRelations Flag for resolving subrelations
 	 * @return array Reflected result.
 	 * @throws InvalidArgumentException
 	 * @throws RuntimeException
 	 * @throws TooDirtyException
 	 * @throws ReflectionException
 	 */
-	public function buildArrayByRows(array $rows, string $table, int $maxDepth = 8): array
+	public function buildArrayByRows(array $rows, string $table, int $maxDepth = 8, bool $resolveRelations = false): array
 	{
-		// create a hash for rows, table and maxDepth and all current settings
-
-		$identifier = md5(
-			serialize($rows) .
-				$table .
-				$maxDepth .
-				serialize($this->buildingConfiguration) .
-				serialize($this->columnBlacklist) .
-				serialize($this->tableColumnBlacklist) .
-				serialize($this->tableColumnWhitelist) .
-				serialize($this->tableColumnRemoveablePrefixes) .
-				serialize($this->tableColumnRemapping) .
-				serialize($this->fieldFinisherMethods) .
-				serialize($this->relatedItems) .
-				serialize($this->relatedChildren) .
-				GeneralUtility::_GP('frontend_editing')
-		);
-		$cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('jar_utilities_reflection');
-		if (($result = $cache->get($identifier)) === false) {
+		if($this->enableCache) {
+			// create a hash for rows, table and maxDepth and all current settings		
+			$identifier = md5(
+				serialize($rows) .
+					$table .
+					$maxDepth .
+					serialize($this->buildingConfiguration) .
+					serialize($this->columnBlacklist) .
+					serialize($this->tableColumnBlacklist) .
+					serialize($this->tableColumnWhitelist) .
+					serialize($this->tableColumnRemoveablePrefixes) .
+					serialize($this->tableColumnRemapping) .
+					serialize($this->fieldFinisherMethods) .
+					serialize($this->relatedItems) .
+					serialize($this->relatedChildren) .
+					GeneralUtility::_GP('frontend_editing')
+			);
+			$cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('jar_utilities_reflection');
+		}
+		if (!$this->enableCache || ($result = $cache->get($identifier)) === false) {
 			$result = [];
 			foreach ($rows as $key => $row) {
-				$result[$key] = $this->buildArrayByRow($row, $table, $maxDepth, false);
+				$result[$key] = $this->buildArrayByRow($row, $table, $maxDepth, $resolveRelations);
 			}
 
 			// handle collection load of relations
-			while (count($this->unloadedRelatedItems) + count($this->unloadedRelatedChildren)) {
-				$this->collectUnloadedElements();
+			if(!$resolveRelations) {
+				while (count($this->unloadedRelatedItems) + count($this->unloadedRelatedChildren)) {
+					$this->collectUnloadedElements();
+				}
 			}
 
-			$cache->set($identifier, $result);
+			if ($this->enableCache) {
+				$cache->set($identifier, $result);
+			}
 		}
 
 		return $result;
@@ -510,6 +536,9 @@ class ReflectionService
 							$relationHandler->additionalWhere[$foreignTable] = $queryBuilder->expr()->eq('deleted', 0);
 
 							// we have to load the elements twice, first (here) in default and later as translated value
+							if($this->fetchBasicRelationFields) {								
+								$relationHandler->setFetchAllFields(false);
+							}
 							$dbResult = $relationHandler->getFromDB();
 
 							$resolvedItemArray = $relationHandler->getResolvedItemArray();
@@ -540,8 +569,11 @@ class ReflectionService
 										// load translated elements on our own									
 										$connectionPool = GeneralUtility::makeInstance(ConnectionPool::class);
 										$queryBuilder = $connectionPool->getQueryBuilderForTable($foreignTable);
+
+										$fields = $this->fetchBasicRelationFields ? ['uid'] : ['*'];
+
 										$queryResult = $queryBuilder
-											->select('*')
+											->select(...$fields)
 											->from($foreignTable)
 											->where(
 												$this->createLanguageContraints($queryBuilder, $selectUids, $foreignTable, $currentLanguageUid)
@@ -554,6 +586,15 @@ class ReflectionService
 									}
 
 									ksort($foreignItems);
+
+									$params = [
+										'foreignTable' => $foreignTable,
+									];
+									foreach ($this->relationFinisherMethods as $finisherMethod) {
+										$params['items'] = $foreignItems;
+										$foreignItems = GeneralUtility::callUserFunction($finisherMethod, $params, $this);
+									}
+
 									$result[$targetKey] = $foreignItems;
 								} else {
 									// TODO: Clean this up, or delete it
@@ -563,6 +604,13 @@ class ReflectionService
 											$foreignItems[] = &$this->buildArrayByRow($foreignRow, $resolvedItem['table'], $maxDepth - 1);
 										}
 									}
+									
+									$params = [];
+									foreach ($this->relationFinisherMethods as $finisherMethod) {
+										$params['items'] = $foreignItems;
+										$foreignItems = GeneralUtility::callUserFunction($finisherMethod, $params, $this);
+									}
+
 									$result[$targetKey] = $foreignItems;
 								}
 							}
@@ -843,6 +891,10 @@ class ReflectionService
 			if (isset($configuration['finisher']['field']) && is_array($configuration['finisher']['field'])) {
 				$this->setFieldFinisherMethods($configuration['finisher']['field']);
 			}
+
+			if (isset($configuration['finisher']['relation']) && is_array($configuration['finisher']['relation'])) {
+				$this->setRelationFinisherMethods($configuration['finisher']['relation']);
+			}
 		}
 
 		return $this;
@@ -1082,6 +1134,78 @@ class ReflectionService
 	public function setFieldFinisherMethods(array $fieldFinisherMethods)
 	{
 		$this->fieldFinisherMethods = $fieldFinisherMethods;
+
+		return $this;
+	}
+
+	/**
+	 * Get enables result cache of buildArrayByRows
+	 *
+	 * @return bool
+	 */ 
+	public function getEnableCache()
+	{
+		return $this->enableCache;
+	}
+
+	/**
+	 * Set enables result cache of buildArrayByRows
+	 *
+	 * @param  bool  $enableCache  Enables result cache of buildArrayByRows
+	 *
+	 * @return  self
+	 */ 
+	public function setEnableCache(bool $enableCache)
+	{
+		$this->enableCache = $enableCache;
+
+		return $this;
+	}
+
+	/**
+	 * Get just load basic fields of related childrens
+	 *
+	 * @return  bool
+	 */ 
+	public function getFetchBasicRelationFields()
+	{
+		return $this->fetchBasicRelationFields;
+	}
+
+	/**
+	 * Set just load basic fields of related childrens
+	 *
+	 * @param  bool  $fetchBasicRelationFields  Just load basic fields of related childrens
+	 *
+	 * @return  self
+	 */ 
+	public function setFetchBasicRelationFields(bool $fetchBasicRelationFields)
+	{
+		$this->fetchBasicRelationFields = $fetchBasicRelationFields;
+
+		return $this;
+	}
+
+	/**
+	 * Get list of php small scale hooks after a relation is reflected
+	 *
+	 * @return  array
+	 */ 
+	public function getRelationFinisherMethods()
+	{
+		return $this->relationFinisherMethods;
+	}
+
+	/**
+	 * Set list of php small scale hooks after a relation is reflected
+	 *
+	 * @param  array  $relationFinisherMethods  List of php small scale hooks after a relation is reflected
+	 *
+	 * @return  self
+	 */ 
+	public function setRelationFinisherMethods(array $relationFinisherMethods)
+	{
+		$this->relationFinisherMethods = $relationFinisherMethods;
 
 		return $this;
 	}
