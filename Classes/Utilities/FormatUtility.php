@@ -56,7 +56,8 @@ class FormatUtility
 			'forceAbsoluteUrl' => 1,
 		]);
 
-		if (empty($url)) {
+		// part[0] with "mailto:" generates "#", so we will also check for this
+		if (empty($url) || $url === '#') {
 			$url = $parts[0];
 		}
 
