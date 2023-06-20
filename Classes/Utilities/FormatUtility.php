@@ -112,7 +112,11 @@ class FormatUtility
 
 		if($date === '0000-00-00 00:00:00' || $date === '0000-00-00') {
 			return null;
-		}	
+		}
+
+		if(strtotime($date . ' UTC') == false) {
+			return self::buildDateTimeArray( new \DateTime( date('c', (int)$date) ) );
+		}
 		
 		return self::buildDateTimeArray(new \DateTime(date('c', strtotime($date . ' UTC'))));
 	}
