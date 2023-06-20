@@ -141,10 +141,10 @@ class FileUtility
 						'crop' => $cropSettings->makeAbsoluteBasedOnFile($file),
 					]);
 
-					// special case: if cropping "default" is active, use this cropped image directly as result
+					// special case: if cropping "default" is active, use this cropped image directly as result (not for svg)				
 					$croppedUrl = $file->process(ProcessedFile::CONTEXT_IMAGECROPSCALEMASK, $processingInstructions)->getPublicUrl();
-
-					if($cropName === 'default') {
+					
+					if($cropName === 'default' && $fileReference->getExtension() !== 'svg') {
 						$result['url'] = $croppedUrl;
 					} else {
 						$cropped[$cropName] = $croppedUrl;
