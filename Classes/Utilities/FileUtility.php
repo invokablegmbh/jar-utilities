@@ -6,6 +6,7 @@ namespace Jar\Utilities\Utilities;
 
 use InvalidArgumentException;
 use RuntimeException;
+use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Imaging\ImageManipulation\CropVariantCollection;
 use TYPO3\CMS\Core\Resource\Exception\ResourceDoesNotExistException;
 use TYPO3\CMS\Core\Resource\File;
@@ -15,6 +16,7 @@ use TYPO3\CMS\Core\Resource\ProcessedFile;
 use TYPO3\CMS\Core\Utility\ArrayUtility;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Utility\PathUtility;
 use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 use UnexpectedValueException;
 
@@ -141,10 +143,10 @@ class FileUtility
 						'crop' => $cropSettings->makeAbsoluteBasedOnFile($file),
 					]);
 
-					// special case: if cropping "default" is active, use this cropped image directly as result (not for svg)				
+					// special case: if cropping "default" is active, use this cropped image directly as result (not for svg or animated gifs)				
 					$croppedUrl = $file->process(ProcessedFile::CONTEXT_IMAGECROPSCALEMASK, $processingInstructions)->getPublicUrl();
 					
-					if($cropName === 'default' && $fileReference->getExtension() !== 'svg') {
+					if($cropName === 'default' && $fileReference->getExtension() !== 'svg' && !static::isFileReferenceIsAnimatedGif($fileReference)) {
 						$result['url'] = $croppedUrl;
 					} else {
 						$cropped[$cropName] = $croppedUrl;
@@ -194,6 +196,44 @@ class FileUtility
 		}
 
 		return $file;
+	}
+
+
+	/**
+	 * @param TYPO3\CMS\Core\Resource\FileReference $fileReference The file reference
+	 * @return bool 
+	 */
+	public static function isFileReferenceIsAnimatedGif(FileReference $fileReference): bool {
+		if($fileReference->isMissing() || $fileReference->getExtension() !== 'gif') {
+			return false;
+		}
+
+		// get absolute Path of fileReference ans add absolute path of storage
+		$filename = Environment::getPublicPath() . $fileReference->getOriginalFile()->getPublicUrl();
+
+		
+		
+		if(!($fh = @fopen($filename, 'rb'))) {
+        	return false;
+		}
+
+		$count = 0;
+		//an animated gif contains multiple "frames", with each frame having a
+		//header made up of:
+		// * a static 4-byte sequence (\x00\x21\xF9\x04)
+		// * 4 variable bytes
+		// * a static 2-byte sequence (\x00\x2C)
+
+		// We read through the file til we reach the end of the file, or we've found
+		// at least 2 frame headers
+		while(!feof($fh) && $count < 2) {
+			$chunk = fread($fh, 1024 * 100); //read 100kb at a time
+			$count += preg_match_all('#\x00\x21\xF9\x04.{4}\x00[\x2C\x21]#s', $chunk, $matches);
+		}
+
+		fclose($fh);
+
+		return $count > 1;
 	}
 
 
