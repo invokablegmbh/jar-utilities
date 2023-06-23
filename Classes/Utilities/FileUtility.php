@@ -139,12 +139,13 @@ class FileUtility
 				foreach ($setup['tcaCropVariants'] as $cropName => $cropVariant) {
 					$cropSettings = $cropVariantCollection->getCropArea($cropName);
 					$processingInstructions = $setup['processingConfigurationForCrop'][$cropName] ?? [];
+					
 					ArrayUtility::mergeRecursiveWithOverrule($processingInstructions, [
 						'crop' => $cropSettings->makeAbsoluteBasedOnFile($file),
 					]);
 
 					// special case: if cropping "default" is active, use this cropped image directly as result (not for svg or animated gifs)				
-					$croppedUrl = $file->process(ProcessedFile::CONTEXT_IMAGECROPSCALEMASK, $processingInstructions)->getPublicUrl();
+					$croppedUrl = $cropSettings->isEmpty() ? $url : $file->process(ProcessedFile::CONTEXT_IMAGECROPSCALEMASK, $processingInstructions)->getPublicUrl();
 					
 					if($cropName === 'default' && $fileReference->getExtension() !== 'svg' && !static::isFileReferenceIsAnimatedGif($fileReference)) {
 						$result['url'] = $croppedUrl;
