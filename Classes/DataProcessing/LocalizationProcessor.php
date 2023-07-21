@@ -61,7 +61,7 @@ class LocalizationProcessor implements DataProcessorInterface
                 $localizationUtility = GeneralUtility::makeInstance(LocalizationUtility::class);
                 foreach ($extensionsToLoad as $extension) {
                     //if flat = 1, all translations will be merged into one big list, otherwise they will be grouped by extension
-                    if(!!$processorConfiguration['flat']) {
+                    if(isset($processorConfiguration['flat']) && !!$processorConfiguration['flat']) {
                         ArrayUtility::mergeRecursiveWithOverrule($result, $localizationUtility->loadTyposcriptTranslations($extension));
                     } else {
                         $result[$extension] = $localizationUtility->loadTyposcriptTranslations($extension);
