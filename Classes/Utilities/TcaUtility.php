@@ -199,7 +199,7 @@ class TcaUtility
 		foreach ($columns as $column) {
 			// handle palette sub-columns
 			if (strpos($column, '--palette--;') === 0) {
-				$palette = $tca[$table]['palettes'][end(GeneralUtility::trimExplode(';', $column))];
+				$palette = $tca[$table]['palettes'][end(GeneralUtility::trimExplode(';', $column, 3))];
 				if (!empty($palette)) {
 					foreach (self::mapStringListToColumns($palette['showitem'], $table, $extendedList) as $paletteColumn) {
 						$result[] = $paletteColumn;
