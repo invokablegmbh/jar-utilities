@@ -474,7 +474,7 @@ class ReflectionService
 									$this->unloadedRelatedChildren[$currentLanguageUid][$foreignTable][$foreignField][$foreignSorting][$uid] = [
 										'config' => $config,
 									];
-									$this->relatedChildren[$currentLanguageUid][$foreignTable][$foreignField][$foreignSorting][$uid] = &$this->unloadedRelatedChildren[$currentLanguageUid][$foreignTable][$foreignField][$foreignSorting][$uid];
+									$this->relatedChildren[$currentLanguageUid][$foreignTable][$foreignField][$foreignSorting][$uid] = [];
 								}
 
 								$result[$targetKey] = &$this->relatedChildren[$currentLanguageUid][$foreignTable][$foreignField][$foreignSorting][$uid];
