@@ -215,7 +215,7 @@ class ReflectionService
 	 * @throws ReflectionException
 	 */
 	public function buildArrayByRows(array $rows, string $table, int $maxDepth = 8, bool $resolveRelations = false): array
-	{
+	{		
 		if($this->enableCache) {
 			// create a hash for rows, table and maxDepth and all current settings		
 			$identifier = md5(
@@ -413,8 +413,17 @@ class ReflectionService
 
 						$foreignTable = ($config['type'] === 'group') ? $config['allowed'] : $config['foreign_table'];
 
+						// set currentLanguage to the language of the row
+						$currentLanguageUid = $row['sys_language_uid'] ?? 0;
+
 						// handle sys_file_references directly, no recursive resolving
 						if (array_key_exists('foreign_table', $config) && $config['foreign_table'] === 'sys_file_reference') {
+
+							// switch to the real UID for translated elements
+							if ($currentLanguageUid !== 0) {
+								$uid = $row['_LOCALIZED_UID'] ?? $row['_PAGES_OVERLAY_UID'] ?? $uid;
+							}
+
 							$relationHandler = GeneralUtility::makeInstance(RelationHandler::class);
 							$relationHandler->start($rawValue, $foreignTable, $config['MM'] ?? '', $uid, $table, $config);
 							$relationHandler->getFromDB();
@@ -448,9 +457,6 @@ class ReflectionService
 							}
 							break;
 						}
-
-						// set currentLanguage to the language of the row
-						$currentLanguageUid = $row['sys_language_uid'] ?? 0;
 
 						// Load relations to other tables
 						if (!$resolveRelations) {						
