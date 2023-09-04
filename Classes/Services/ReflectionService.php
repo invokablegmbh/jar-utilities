@@ -538,8 +538,7 @@ class ReflectionService
 
 							// don't fetch hidden and deleted items
 							$queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable($foreignTable)->createQueryBuilder();
-							$relationHandler->additionalWhere[$foreignTable] = $queryBuilder->expr()->eq('hidden', 0);
-							$relationHandler->additionalWhere[$foreignTable] = $queryBuilder->expr()->eq('deleted', 0);
+							$relationHandler->additionalWhere[$foreignTable] = $queryBuilder->expr()->eq('hidden', 0) . ' AND ' . $queryBuilder->expr()->eq('deleted', 0);
 
 							// we have to load the elements twice, first (here) in default and later as translated value
 							if($this->fetchBasicRelationFields) {								
