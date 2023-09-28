@@ -20,6 +20,8 @@ use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Extbase\Persistence\Generic\Exception\TooDirtyException;
 use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 use UnexpectedValueException;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Information\Typo3Version;
 
 /**
  *
@@ -204,9 +206,14 @@ class TCEmainHook implements SingletonInterface
                             $queryBuilder->expr()->andX(
                                 ...$foreignConditions
                             )
-                        )
-                        ->executeQuery()
+                    );
+                    if ((GeneralUtility::makeInstance(Typo3Version::class))->getMajorVersion() < 11) {
+                        $parentElements = $queryBuilder->execute()
+                        ->fetchAllAssociative();
+                    } else {
+                        $parentElements = $queryBuilder->executeQuery()
                         ->fetchAll();
+                    }
                 }
 
                 // Resolve Basic mm relations
@@ -232,9 +239,14 @@ class TCEmainHook implements SingletonInterface
                         )
                         ->where(
                             $queryBuilder->expr()->in('mm.uid_foreign', $queryBuilder->createNamedParameter($uidChunk, Connection::PARAM_INT_ARRAY))
-                        )
-                        ->executeQuery()
+                        );
+                    if ((GeneralUtility::makeInstance(Typo3Version::class))->getMajorVersion() < 11) {
+                        $parentElements = $queryBuilder->execute()
+                        ->fetchAllAssociative();
+                    } else {
+                        $parentElements = $queryBuilder->executeQuery()
                         ->fetchAll();
+                    }   
                 }
 
                 // resolve simple foreign relations // resolve simple group relations // basic selects without mm relations
@@ -251,9 +263,14 @@ class TCEmainHook implements SingletonInterface
                         ->from($reverseRelation['table'])
                         ->where(
                             ...$wheres
-                        )
-                        ->executeQuery()
+                        );
+                    if ((GeneralUtility::makeInstance(Typo3Version::class))->getMajorVersion() < 11) {
+                        $parentElements = $queryBuilder->execute()
+                        ->fetchAllAssociative();
+                    } else {
+                        $parentElements = $queryBuilder->executeQuery()
                         ->fetchAll();
+                    } 
                 }
 
                 // update timestamps
@@ -267,8 +284,12 @@ class TCEmainHook implements SingletonInterface
                                 $queryBuilder->createNamedParameter($parentUids, Connection::PARAM_INT_ARRAY)
                             )
                         )
-                        ->set($reverseRelation['tstampColumn'], time())
-                        ->executeStatement();
+                        ->set($reverseRelation['tstampColumn'], time());
+                    if ((GeneralUtility::makeInstance(Typo3Version::class))->getMajorVersion() < 11) {
+                        $parentElements = $queryBuilder->execute();
+                    } else {
+                        $parentElements = $queryBuilder->executeStatement();
+                    }  
 
                     if ($this->securityIterator > 10000) {
                         break;
