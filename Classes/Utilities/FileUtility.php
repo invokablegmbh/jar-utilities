@@ -130,12 +130,12 @@ class FileUtility
 		
 		$file = $fileReference->getOriginalFile();
 		if ($file->isImage()) {
-			
-			// part for creating cropped image urls
+
+			// part for creating cropped image urls TYPO3\CMS\Core\Imaging\ImageManipulation\Area
 			if(!empty($setup['tcaCropVariants']) && $fileReference->hasProperty('crop')) {
 
 				$cropVariantCollection = CropVariantCollection::create((string) $fileReference->getProperty('crop'));
-				$cropped = [];
+				$cropped = $focusArea = [];
 				foreach ($setup['tcaCropVariants'] as $cropName => $cropVariant) {
 					$cropSettings = $cropVariantCollection->getCropArea($cropName);
 					$processingInstructions = $setup['processingConfigurationForCrop'][$cropName] ?? [];
@@ -152,11 +152,19 @@ class FileUtility
 					} else {
 						$cropped[$cropName] = $croppedUrl;
 					}
-					
+
+					$focusAreaVariant = $cropVariantCollection->getFocusArea($cropName);
+					if($focusAreaVariant) {
+						$focusArea[$cropName] = $focusAreaVariant;
+					}
 				}
 
 				if(count($cropped)) {
 					$result['cropped'] = $cropped;
+				}
+
+				if(count($focusArea)) {
+					$result['focusArea'] = $focusArea;
 				}
 			}
 
