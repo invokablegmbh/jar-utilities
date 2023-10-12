@@ -153,7 +153,7 @@ class FileUtility
 						$cropped[$cropName] = $croppedUrl;
 					}
 
-					$focusAreaVariant = $cropVariantCollection->getFocusArea($cropName);
+					$focusAreaVariant = (array)$cropVariantCollection->getFocusArea($cropName);
 					if($focusAreaVariant) {
 						$focusArea[$cropName] = $focusAreaVariant;
 					}
