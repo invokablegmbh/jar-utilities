@@ -172,49 +172,67 @@ class TypoScriptUtility
 	{
 		if($cObj === null) {
 			$cObj = GeneralUtility::makeInstance(ContentObjectRenderer::class);
-		}		
+		}
+
+		$availableCObjects = array_keys($GLOBALS['TYPO3_CONF_VARS']['FE']['ContentObjects']);
+
+		$incoming = $conf;
+		//DebuggerUtility::var_dump($conf, 'INCOMING');
 		foreach ($conf as $key => $c) {
 
-			$isChild = (substr((string) $key, -1) === '.');	// f.e. "bla."
+			/* f.e.:				
+				bla. = .... # <- This
+			*/
 
-			$isReference = (is_string($c) && substr((string) $c, 0, 1) === '<');	// f.e. "< lib.content"
+			$isSubConfiguration = (substr((string) $key, -1) === '.');
 
-			if ($isReference) {
-				$GLOBALS['showoutput'] = true;
+			/* f.e.:
+				bla = TEXT	# <- This combination
+				bla. = .... # <- 
+			*/
+
+			$cObjectParentKey = substr((string) $key, 0, -1);
+			$cObjectParentExists = $isSubConfiguration && key_exists($cObjectParentKey, $conf) && in_array(trim($conf[$cObjectParentKey]), $availableCObjects);
+
+			$isCObjectConfiguration =
+				$cObjectParentExists &&
+				$isSubConfiguration
+			;
+
+			// f.e. "=< lib.content"
+			$isReference = (is_string($c) && substr((string) $c, 0, 1) === '<');	
+
+			//$isCombinedChildParent = 
+
+			if ($isReference) {				
 				DebuggerUtility::var_dump('JÜRGEN!');
-				/*DebuggerUtility::var_dump($key);
-				DebuggerUtility::var_dump($c);
-				DebuggerUtility::var_dump($conf[$key . '.'] ?? []);*/
-				$conf[$key] = $cObj->cObjGetSingle($c, $conf[$key . '.'] ?? []);
+			
+
+				$referenceKey = trim(substr($c, 1));
+				$config = array_replace_recursive(self::get($referenceKey), $conf[$key . '.'] ?? []);
+
+				$conf[$key] = static::populateTypoScriptConfiguration($config, $cObj);
+
+				DebuggerUtility::var_dump($conf[$key]);
+				die();
 			}
-			else if (!$isChild) {
-				// Just populate fields with subinformations
-				if (!key_exists($key . '.', $conf)) {
-					continue;
-				}
+			else if ($isCObjectConfiguration) {				
 
-				// just populate registered cObjects
-				$cObjects = array_keys($GLOBALS['TYPO3_CONF_VARS']['FE']['ContentObjects']);
-				if(!in_array($c, $cObjects)) {
-					continue;
-				}
-
-				$conf[$key] = $cObj->cObjGetSingle($c, $conf[$key . '.']);
-			} else {
-				$parentKey = substr($key, 0, -1);
-				$hasParent = key_exists($parentKey, $conf);
-
-				// Delete Subinformations, because they are populated earlier
+				$conf[$cObjectParentKey] = $cObj->cObjGetSingle($conf[$cObjectParentKey], $c);
+				// Delete Subinformations, because they rendered in the parent
 				unset($conf[$key]);
-
-				// when no Parent exist save the values and remove the . at the end
-				if (!$hasParent) {
-					// also populate substructure
-					$c = static::populateTypoScriptConfiguration($c, $cObj);
-					$conf[$parentKey] = $c;
-				}
+			} else if ($isSubConfiguration) {		
+				// when no Parent exist save the values and remove the . at the end (just a subconfiguration, for parent/child cObjects, see above)		
+				$parentKey = substr($key, 0, -1);
+				$conf[$parentKey] = static::populateTypoScriptConfiguration($c, $cObj);
+				unset($conf[$key]);
+			} else {
+				
 			}
 		}
+
+		DebuggerUtility::var_dump($incoming, 'INCOMING');
+		DebuggerUtility::var_dump($conf, 'OUTGOING');
 		return $conf;
 	}
 }
