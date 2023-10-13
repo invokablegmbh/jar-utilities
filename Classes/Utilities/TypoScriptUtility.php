@@ -165,10 +165,10 @@ class TypoScriptUtility
 	 * 
 	 * @param array $conf Plain TypoScript array.
 	 * @param null|ContentObjectRenderer $cObj ContentObject which should be used.
-	 * @return array The plain populated TypoScript array.
+	 * @return array|string The plain populated TypoScript array.
 	 * @throws InvalidArgumentException 
 	 */
-	public static function populateTypoScriptConfiguration(array $conf, ?ContentObjectRenderer $cObj = null): array
+	public static function populateTypoScriptConfiguration(array $conf, ?ContentObjectRenderer $cObj = null): array|string
 	{
 		if($cObj === null) {
 			$cObj = GeneralUtility::makeInstance(ContentObjectRenderer::class);
@@ -176,8 +176,12 @@ class TypoScriptUtility
 
 		$availableCObjects = array_keys($GLOBALS['TYPO3_CONF_VARS']['FE']['ContentObjects']);
 
-		$incoming = $conf;
-		//DebuggerUtility::var_dump($conf, 'INCOMING');
+		// f.e. flat typoScript Objects with "_typoScriptNodeValue"
+		$isFlatCObject = (is_array($conf) && key_exists('_typoScriptNodeValue', $conf) && in_array($conf['_typoScriptNodeValue'], $availableCObjects));
+
+		if ($isFlatCObject) {
+			return $cObj->cObjGetSingle($conf['_typoScriptNodeValue'], $conf);
+		}
 		foreach ($conf as $key => $c) {
 
 			/* f.e.:				
@@ -200,39 +204,34 @@ class TypoScriptUtility
 			;
 
 			// f.e. "=< lib.content"
-			$isReference = (is_string($c) && substr((string) $c, 0, 1) === '<');	
+			$isReference = (is_string($c) && substr((string) $c, 0, 1) === '<');			
 
-			//$isCombinedChildParent = 
-
-			if ($isReference) {				
-				DebuggerUtility::var_dump('JÜRGEN!');
-			
-
+			if ($isReference) {	
 				$referenceKey = trim(substr($c, 1));
 				$config = array_replace_recursive(self::get($referenceKey), $conf[$key . '.'] ?? []);
 
 				$conf[$key] = static::populateTypoScriptConfiguration($config, $cObj);
-
-				DebuggerUtility::var_dump($conf[$key]);
-				die();
 			}
 			else if ($isCObjectConfiguration) {				
 
 				$conf[$cObjectParentKey] = $cObj->cObjGetSingle($conf[$cObjectParentKey], $c);
 				// Delete Subinformations, because they rendered in the parent
 				unset($conf[$key]);
+
 			} else if ($isSubConfiguration) {		
 				// when no Parent exist save the values and remove the . at the end (just a subconfiguration, for parent/child cObjects, see above)		
 				$parentKey = substr($key, 0, -1);
 				$conf[$parentKey] = static::populateTypoScriptConfiguration($c, $cObj);
 				unset($conf[$key]);
+
 			} else {
-				
+				// resolve arrays and check for subconfigurations
+				if(is_array($c)) {
+					$conf[$key] = static::populateTypoScriptConfiguration($c, $cObj);
+				}
 			}
 		}
-
-		DebuggerUtility::var_dump($incoming, 'INCOMING');
-		DebuggerUtility::var_dump($conf, 'OUTGOING');
+		
 		return $conf;
 	}
 }
