@@ -74,8 +74,9 @@ class ReflectionProcessor implements DataProcessorInterface
      * @return array the processed data as key/value store
      */
     public function process(ContentObjectRenderer $cObj, array $contentObjectConfiguration, array $processorConfiguration, array $processedData)
-    {        
-        $populatedProcessorConfiguration = TypoScriptUtility::populateTypoScriptConfiguration($processorConfiguration, $cObj);        
+    {   
+        $populatedProcessorConfiguration = TypoScriptUtility::populateTypoScriptConfiguration($processorConfiguration, $cObj);
+        
         $table = $populatedProcessorConfiguration['table'] ?? $processedData['table'] ?? 'tt_content';
         $row = $populatedProcessorConfiguration['row'] ?? $processedData['data'] ?? $processedData;
         $maxDepth = $populatedProcessorConfiguration['maxDepth'] ?? 8;
