@@ -172,12 +172,22 @@ class TypoScriptUtility
 	{
 		if($cObj === null) {
 			$cObj = GeneralUtility::makeInstance(ContentObjectRenderer::class);
-		}
+		}		
 		foreach ($conf as $key => $c) {
 
 			$isChild = (substr((string) $key, -1) === '.');	// f.e. "bla."
 
-			if (!$isChild) {
+			$isReference = (is_string($c) && substr((string) $c, 0, 1) === '<');	// f.e. "< lib.content"
+
+			if ($isReference) {
+				$GLOBALS['showoutput'] = true;
+				DebuggerUtility::var_dump('JÜRGEN!');
+				/*DebuggerUtility::var_dump($key);
+				DebuggerUtility::var_dump($c);
+				DebuggerUtility::var_dump($conf[$key . '.'] ?? []);*/
+				$conf[$key] = $cObj->cObjGetSingle($c, $conf[$key . '.'] ?? []);
+			}
+			else if (!$isChild) {
 				// Just populate fields with subinformations
 				if (!key_exists($key . '.', $conf)) {
 					continue;

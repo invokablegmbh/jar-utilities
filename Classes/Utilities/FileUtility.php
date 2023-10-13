@@ -144,10 +144,11 @@ class FileUtility
 						'crop' => $cropSettings->makeAbsoluteBasedOnFile($file),
 					]);
 
-					// special case: if cropping "default" is active, use this cropped image directly as result (not for svg or animated gifs)				
-					$croppedUrl = $cropSettings->isEmpty() ? $url : $file->process(ProcessedFile::CONTEXT_IMAGECROPSCALEMASK, $processingInstructions)->getPublicUrl();
+					// if no cropping is selected return svgs and animated gifs as raw path					
+					$croppedUrl = ($cropSettings->isEmpty() && ($fileReference->getExtension() === 'webm' || $fileReference->getExtension() === 'svg' || static::isFileReferenceIsAnimatedGif($fileReference))) ? $url : $file->process(ProcessedFile::CONTEXT_IMAGECROPSCALEMASK, $processingInstructions)->getPublicUrl();					
 					
-					if($cropName === 'default' && $fileReference->getExtension() !== 'svg' && !static::isFileReferenceIsAnimatedGif($fileReference)) {
+					// special case: if cropping "default" is active, use this cropped image directly as direct result
+					if($cropName === 'default') {
 						$result['url'] = $croppedUrl;
 					} else {
 						$cropped[$cropName] = $croppedUrl;
