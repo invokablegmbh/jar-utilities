@@ -168,8 +168,12 @@ class TypoScriptUtility
 	 * @return array|string The plain populated TypoScript array.
 	 * @throws InvalidArgumentException 
 	 */
-	public static function populateTypoScriptConfiguration(array $conf, ?ContentObjectRenderer $cObj = null): array|string
+	public static function populateTypoScriptConfiguration(array $conf, ?ContentObjectRenderer $cObj = null, int $maxNesting = 100): array|string
 	{
+		if($maxNesting <= 0) {
+			return [];
+		}
+
 		if($cObj === null) {
 			$cObj = GeneralUtility::makeInstance(ContentObjectRenderer::class);
 		}
@@ -210,7 +214,7 @@ class TypoScriptUtility
 				$referenceKey = trim(substr($c, 1));
 				$config = array_replace_recursive(self::get($referenceKey), $conf[$key . '.'] ?? []);
 
-				$conf[$key] = static::populateTypoScriptConfiguration($config, $cObj);
+				$conf[$key] = static::populateTypoScriptConfiguration($config, $cObj, $maxNesting - 1);
 			}
 			else if ($isCObjectConfiguration) {				
 
@@ -221,17 +225,17 @@ class TypoScriptUtility
 			} else if ($isSubConfiguration) {		
 				// when no Parent exist save the values and remove the . at the end (just a subconfiguration, for parent/child cObjects, see above)		
 				$parentKey = substr($key, 0, -1);
-				$conf[$parentKey] = static::populateTypoScriptConfiguration($c, $cObj);
+				$conf[$parentKey] = static::populateTypoScriptConfiguration($c,$cObj, $maxNesting - 1);
 				unset($conf[$key]);
 
 			} else {
 				// resolve arrays and check for subconfigurations
 				if(is_array($c)) {
-					$conf[$key] = static::populateTypoScriptConfiguration($c, $cObj);
+					$conf[$key] = static::populateTypoScriptConfiguration($c,$cObj, $maxNesting - 1);
 				}
 			}
 		}
-		
+
 		return $conf;
 	}
 }
