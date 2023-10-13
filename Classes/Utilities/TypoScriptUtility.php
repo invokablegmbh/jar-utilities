@@ -165,46 +165,73 @@ class TypoScriptUtility
 	 * 
 	 * @param array $conf Plain TypoScript array.
 	 * @param null|ContentObjectRenderer $cObj ContentObject which should be used.
-	 * @return array The plain populated TypoScript array.
+	 * @return array|string The plain populated TypoScript array.
 	 * @throws InvalidArgumentException 
 	 */
-	public static function populateTypoScriptConfiguration(array $conf, ?ContentObjectRenderer $cObj = null): array
+	public static function populateTypoScriptConfiguration(array $conf, ?ContentObjectRenderer $cObj = null): array|string
 	{
 		if($cObj === null) {
 			$cObj = GeneralUtility::makeInstance(ContentObjectRenderer::class);
 		}
+
+		$availableCObjects = array_keys($GLOBALS['TYPO3_CONF_VARS']['FE']['ContentObjects']);
+
+		// f.e. flat typoScript Objects with "_typoScriptNodeValue"
+		$isFlatCObject = (is_array($conf) && key_exists('_typoScriptNodeValue', $conf) && in_array($conf['_typoScriptNodeValue'], $availableCObjects));
+
+		if ($isFlatCObject) {
+			return $cObj->cObjGetSingle($conf['_typoScriptNodeValue'], $conf);
+		}
 		foreach ($conf as $key => $c) {
 
-			$isChild = (substr((string) $key, -1) === '.');	// f.e. "bla."
+			/* f.e.:				
+				bla. = .... # <- This
+			*/
 
-			if (!$isChild) {
-				// Just populate fields with subinformations
-				if (!key_exists($key . '.', $conf)) {
-					continue;
-				}
+			$isSubConfiguration = (substr((string) $key, -1) === '.');
 
-				// just populate registered cObjects
-				$cObjects = array_keys($GLOBALS['TYPO3_CONF_VARS']['FE']['ContentObjects']);
-				if(!in_array($c, $cObjects)) {
-					continue;
-				}
+			/* f.e.:
+				bla = TEXT	# <- This combination
+				bla. = .... # <- 
+			*/
 
-				$conf[$key] = $cObj->cObjGetSingle($c, $conf[$key . '.']);
-			} else {
-				$parentKey = substr($key, 0, -1);
-				$hasParent = key_exists($parentKey, $conf);
+			$cObjectParentKey = substr((string) $key, 0, -1);
+			$cObjectParentExists = $isSubConfiguration && key_exists($cObjectParentKey, $conf) && in_array(trim($conf[$cObjectParentKey]), $availableCObjects);
 
-				// Delete Subinformations, because they are populated earlier
+			$isCObjectConfiguration =
+				$cObjectParentExists &&
+				$isSubConfiguration
+			;
+
+			// f.e. "=< lib.content"
+			$isReference = (is_string($c) && substr((string) $c, 0, 1) === '<');			
+
+			if ($isReference) {	
+				$referenceKey = trim(substr($c, 1));
+				$config = array_replace_recursive(self::get($referenceKey), $conf[$key . '.'] ?? []);
+
+				$conf[$key] = static::populateTypoScriptConfiguration($config, $cObj);
+			}
+			else if ($isCObjectConfiguration) {				
+
+				$conf[$cObjectParentKey] = $cObj->cObjGetSingle($conf[$cObjectParentKey], $c);
+				// Delete Subinformations, because they rendered in the parent
 				unset($conf[$key]);
 
-				// when no Parent exist save the values and remove the . at the end
-				if (!$hasParent) {
-					// also populate substructure
-					$c = static::populateTypoScriptConfiguration($c, $cObj);
-					$conf[$parentKey] = $c;
+			} else if ($isSubConfiguration) {		
+				// when no Parent exist save the values and remove the . at the end (just a subconfiguration, for parent/child cObjects, see above)		
+				$parentKey = substr($key, 0, -1);
+				$conf[$parentKey] = static::populateTypoScriptConfiguration($c, $cObj);
+				unset($conf[$key]);
+
+			} else {
+				// resolve arrays and check for subconfigurations
+				if(is_array($c)) {
+					$conf[$key] = static::populateTypoScriptConfiguration($c, $cObj);
 				}
 			}
 		}
+		
 		return $conf;
 	}
 }
