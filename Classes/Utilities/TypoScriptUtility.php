@@ -168,7 +168,7 @@ class TypoScriptUtility
 	 * @return array|string The plain populated TypoScript array.
 	 * @throws InvalidArgumentException 
 	 */
-	public static function populateTypoScriptConfiguration(array $conf, ?ContentObjectRenderer $cObj = null, int $maxNesting = 100): array|string
+	public static function populateTypoScriptConfiguration(array $conf, ?ContentObjectRenderer $cObj = null, int $maxNesting = 100)
 	{
 		if($maxNesting <= 0) {
 			return [];
