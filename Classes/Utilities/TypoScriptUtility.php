@@ -200,7 +200,7 @@ class TypoScriptUtility
 			*/
 
 			$cObjectParentKey = substr((string) $key, 0, -1);
-			$cObjectParentExists = $isSubConfiguration && key_exists($cObjectParentKey, $conf) && in_array(trim($conf[$cObjectParentKey]), $availableCObjects);
+			$cObjectParentExists = $isSubConfiguration && key_exists($cObjectParentKey, $conf) && is_string($conf[$cObjectParentKey]) && in_array(trim($conf[$cObjectParentKey]), $availableCObjects);
 
 			$isCObjectConfiguration =
 				$cObjectParentExists &&
