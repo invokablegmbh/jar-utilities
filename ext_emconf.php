@@ -6,7 +6,7 @@ $EM_CONF['jar_utilities'] = array(
 	'category' => 'plugin',
 	'author' => 'invokable GmbH',
 	'author_email' => 'info@invokable.gmbh',
-	'version' => '1.0.81',
+	'version' => '2.0.0',
 	'state' => 'stable',
 	'internal' => '',
 	'uploadfolder' => '0',
@@ -14,7 +14,7 @@ $EM_CONF['jar_utilities'] = array(
 	'clearCacheOnLoad' => 0,
 	'constraints' => array(
 		'depends' => array(
-			'typo3' => '10.4.1-11.5.99',
+			'typo3' => '12.4.1-12.4.99',
 			'php' => '7.4.0-8.1.999',
 		),
 		'conflicts' => array(

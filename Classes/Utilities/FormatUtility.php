@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Jar\Utilities\Utilities;
 
 use InvalidArgumentException;
+use TYPO3\CMS\Core\Http\ApplicationType;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
@@ -171,7 +172,15 @@ class FormatUtility
 	public static  function renderRteContent(string $value): string
 	{
 		$contentObject = GeneralUtility::makeInstance(ContentObjectRenderer::class);
-		$content = str_replace('&amp;shy;', '&shy;', $contentObject->parseFunc($value, array(), '< lib.parseFunc_RTE'));
+		$conf = [];
+		if(ApplicationType::fromRequest($GLOBALS['TYPO3_REQUEST'])->isFrontend() === false) {
+			$conf = static::getParseFuncConf();
+		};
+		$content = str_replace('&amp;shy;', '&shy;', $contentObject->parseFunc($value, $conf, '< lib.parseFunc_RTE'));
 		return $content;
+	}
+
+	protected static function getParseFuncConf() {
+		return array ( 'makelinks' => 0, 'makelinks.' => array ( 'http.' => array ( 'keep' => 'path', 'extTarget' => '_blank', ), 'mailto.' => array ( 'keep' => 'path', ), ), 'tags.' => array ( 'a' => 'TEXT', 'a.' => array ( 'current' => '1', 'typolink.' => array ( 'parameter.' => array ( 'data' => 'parameters:href', ), 'title.' => array ( 'data' => 'parameters:title', ), 'ATagParams.' => array ( 'data' => 'parameters:allParams', ), 'target.' => array ( 'ifEmpty.' => array ( 'data' => 'parameters:target', ), ), 'extTarget.' => array ( 'ifEmpty.' => array ( 'override' => '_blank', ), 'override.' => array ( 'data' => 'parameters:target', ), ), ), ), ), 'allowTags' => 'a, abbr, acronym, address, article, aside, b, bdo, big, blockquote, br, caption, center, cite, code, col, colgroup, dd, del, dfn, dl, div, dt, em, figure, font, footer, header, h1, h2, h3, h4, h5, h6, hr, i, img, ins, kbd, label, li, link, meta, nav, ol, p, pre, q, s, samp, sdfield, section, small, span, strike, strong, style, sub, sup, table, thead, tbody, tfoot, td, th, tr, title, tt, u, ul, var', 'denyTags' => '*', 'constants' => '1', 'nonTypoTagStdWrap.' => array ( 'HTMLparser' => '1', 'HTMLparser.' => array ( 'keepNonMatchedTags' => '1', 'htmlSpecialChars' => '2', ), ), 'htmlSanitize' => '1', );
 	}
 }

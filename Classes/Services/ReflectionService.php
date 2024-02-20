@@ -349,6 +349,10 @@ class ReflectionService
 				$rawValue = $row[$tcaColumn] ?? '';
 
 				switch ($config['type']) {
+					case 'link':
+						// Links
+						$result[$targetKey] = FormatUtility::buildLinkArray($rawValue);
+						break;
 					case 'input':
 						switch ($config['renderType'] ?? '') {
 							case 'inputLink':
@@ -399,6 +403,7 @@ class ReflectionService
 					case 'select':
 					case 'group':
 					case 'category':
+					case 'file':
 
 						// just return the raw value(s) of flat selects or group which aren't handle db-relations
 						if (
@@ -415,10 +420,12 @@ class ReflectionService
 
 						// set currentLanguage to the language of the row
 						$currentLanguageUid = $row['sys_language_uid'] ?? 0;
-
+						#if($targetKey == 'img_desktop') {
+							#debug($config);die;
+						#}
 						// handle sys_file_references directly, no recursive resolving
 						if (array_key_exists('foreign_table', $config) && $config['foreign_table'] === 'sys_file_reference') {
-
+							
 							// switch to the real UID for translated elements
 							if ($currentLanguageUid !== 0) {
 								$uid = $row['_LOCALIZED_UID'] ?? $row['_PAGES_OVERLAY_UID'] ?? $uid;

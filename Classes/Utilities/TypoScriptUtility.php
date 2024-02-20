@@ -10,7 +10,8 @@ use TYPO3\CMS\Core\TypoScript\TypoScriptService;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 use TYPO3\CMS\Core\Database\ConnectionPool;
-use TYPO3\CMS\Core\TypoScript\ExtendedTemplateService;
+use TYPO3\CMS\Core\Http\ApplicationType;
+use TYPO3\CMS\Core\TypoScript\TemplateService;
 use TYPO3\CMS\Core\Utility\RootlineUtility;
 use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 
@@ -32,10 +33,10 @@ class TypoScriptUtility
 	/**
 	 * Loads current TypoScript like TypoScriptUtility::get('plugin.tx_jarfeditor.settings')
 	 * 
-	 * @param string|null $path Dot notated TypoScript path.
-	 * @param int|null $pageUid PageUid from which page the TypoScript should be loaded (optional in Frontend).
-	 * @param bool $populated should the Data be populated (f.e. "element = TEXT / element.value = Bla" => "element = Bla").
-	 * @return array|string The plain TypoScript array.
+	 * @param string|null $path Dot notated TypoScript Path
+	 * @param int|null $pageUid PageUid from which page the TypoScript should be loaded (optional in Frontend)
+	 * @param bool $populated should the Data be populated (f.e. "element = TEXT / element.value = Bla" => "element = Bla")
+	 * @return array|string
 	 * @throws InvalidArgumentException
 	 */
 	public static function get(string $path = null, int $pageUid = null, bool $populated = false)
@@ -46,14 +47,13 @@ class TypoScriptUtility
 		$hash = $path . '_' . ((int)$cachePage) . '_' . $populated;
 
 		if (($ts_array = $cache->get('ts', $hash)) === false) {
-			if (isset($GLOBALS['TSFE']) && $pageUid === null && TYPO3_MODE === 'FE') {
+			if ($pageUid === null && ApplicationType::fromRequest($GLOBALS['TYPO3_REQUEST'])->isFrontend()) {
 				$setup = $GLOBALS['TSFE']->tmpl->setup;
-			} else {
-				$setup = static::loadTypoScript($pageUid);
-			}
-
+			} else if ($pageUid) {
+                $setup = static::loadTypoScript($pageUid);
+            }
 			$setup = empty($setup) ? [] : $setup;
-
+			
 			$ts_array = static::convertTypoScriptArrayToPlainArray($setup);
 
 			if (!empty($path)) {
@@ -110,12 +110,8 @@ class TypoScriptUtility
 		// Bloody fallback to first used Page, if page is emtpy
 		if ($pageUid === null) {
 			$queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable('pages')->createQueryBuilder();
-			$pageUid = $queryBuilder
-				->select('uid')
-				->from('pages')
-				->setMaxResults(1)
-				->executeQuery()
-				->fetchOne();
+			$queryBuilder->select('uid')->from('pages')->setMaxResults(1);
+			$pageUid = reset($queryBuilder->execute());
 		}
 
 		if(empty($pageUid)) {
@@ -124,7 +120,7 @@ class TypoScriptUtility
 
 		$pageUid = intval($pageUid);
 		$rootLineUtility = GeneralUtility::makeInstance(RootlineUtility::class, $pageUid);
-		$TSObj = GeneralUtility::makeInstance(ExtendedTemplateService::class);
+		$TSObj = GeneralUtility::makeInstance(TemplateService::class);
 		$TSObj->runThroughTemplates($rootLineUtility->get());
 		$TSObj->generateConfig();
 
