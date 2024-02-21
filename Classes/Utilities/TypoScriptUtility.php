@@ -6,6 +6,7 @@ namespace Jar\Utilities\Utilities;
 
 use InvalidArgumentException;
 use Jar\Utilities\Services\RegistryService;
+use Psr\Http\Message\ServerRequestInterface;
 use TYPO3\CMS\Core\TypoScript\TypoScriptService;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
@@ -46,7 +47,9 @@ class TypoScriptUtility
 		$cachePage = $pageUid === null ? BackendUtility::currentPageUid() : $pageUid;
 		$hash = $path . '_' . ((int)$cachePage) . '_' . $populated;
 		if (($ts_array = $cache->get('ts', $hash)) === false) {
-			if ($pageUid === null && ApplicationType::fromRequest($GLOBALS['TYPO3_REQUEST'])->isFrontend()) {
+			if (isset($GLOBALS['TSFE']) && $pageUid === null && (($GLOBALS['TYPO3_REQUEST'] ?? null) instanceof ServerRequestInterface
+			&& ApplicationType::fromRequest($GLOBALS['TYPO3_REQUEST'])->isFrontend()
+		)) {
 				$setup = $GLOBALS['TSFE']->tmpl->setup;
 			} else {
                 $setup = static::loadTypoScript($pageUid);
