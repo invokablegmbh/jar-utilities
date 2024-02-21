@@ -45,11 +45,10 @@ class TypoScriptUtility
 
 		$cachePage = $pageUid === null ? BackendUtility::currentPageUid() : $pageUid;
 		$hash = $path . '_' . ((int)$cachePage) . '_' . $populated;
-
 		if (($ts_array = $cache->get('ts', $hash)) === false) {
 			if ($pageUid === null && ApplicationType::fromRequest($GLOBALS['TYPO3_REQUEST'])->isFrontend()) {
 				$setup = $GLOBALS['TSFE']->tmpl->setup;
-			} else if ($pageUid) {
+			} else {
                 $setup = static::loadTypoScript($pageUid);
             }
 			$setup = empty($setup) ? [] : $setup;
@@ -111,7 +110,7 @@ class TypoScriptUtility
 		if ($pageUid === null) {
 			$queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable('pages')->createQueryBuilder();
 			$queryBuilder->select('uid')->from('pages')->setMaxResults(1);
-			$pageUid = reset($queryBuilder->execute());
+			$pageUid = $queryBuilder->executeQuery()->fetchOne();
 		}
 
 		if(empty($pageUid)) {
