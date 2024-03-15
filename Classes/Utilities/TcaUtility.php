@@ -284,6 +284,17 @@ class TcaUtility
 	{
 		$result = [];
 		foreach ($items as $item) {
+			// remap to from modern to classic
+			if(array_key_exists('label', $item) && !array_key_exists(0, $item)) {
+				$item[0] = $item['label'];
+			}
+			if(array_key_exists('icon', $item) && !array_key_exists(2, $item)) {
+				$item[2] = $item['icon'];
+			}
+			if(array_key_exists('value', $item) && !array_key_exists(1, $item)) {
+				$item[1] = $item['value'];
+			}
+			
 			$result[$item[1]] = [
 				'value' => $item[0],
 				'icon' => $item[2] ?? null,
