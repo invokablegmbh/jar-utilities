@@ -196,11 +196,12 @@ class BackendUtility
 	 */
 	public static function getWizardInformations(string $ctype): array
 	{
+
 		$cache = GeneralUtility::makeInstance(RegistryService::class);
 		$hash = 'all-wizard-elements';
-
+		
 		if (($elements = $cache->get('backend-utility', $hash)) === false) {
-
+			
 			$elements = IteratorUtility::map(
 				IteratorUtility::flatten(
 					IteratorUtility::pluck(
@@ -211,12 +212,15 @@ class BackendUtility
 					)
 				),
 				function ($element) {
-					$element['title'] = LocalizationUtility::localize($element['title']);
-					$element['description'] = LocalizationUtility::localize($element['description']);
+					if (isset($element['title'])) {
+						$element['title'] = LocalizationUtility::localize($element['title']);
+					}
+					if (isset($element['description'])) {
+						$element['description'] = LocalizationUtility::localize($element['description']);
+					}
 					return $element;
 				}
 			);
-
 			$cache->set('backend-utility', $hash, $elements);
 		}
 		return $elements[$ctype];
