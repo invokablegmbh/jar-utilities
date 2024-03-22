@@ -353,6 +353,9 @@ class ReflectionService
 						// Links
 						$result[$targetKey] = FormatUtility::buildLinkArray($rawValue);
 						break;
+					case 'datetime':
+						$result[$targetKey] = FormatUtility::buildDateTimeArrayFromString((string) $rawValue);
+						break;
 					case 'input':
 						switch ($config['renderType'] ?? '') {
 							case 'inputLink':
