@@ -12,6 +12,7 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Http\ApplicationType;
+use TYPO3\CMS\Core\Information\Typo3Version;
 use TYPO3\CMS\Core\TypoScript\TemplateService;
 use TYPO3\CMS\Core\Utility\RootlineUtility;
 use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
@@ -176,7 +177,13 @@ class TypoScriptUtility
 			$cObj = GeneralUtility::makeInstance(ContentObjectRenderer::class);
 		}
 
-		$availableCObjects = array_keys($GLOBALS['TYPO3_CONF_VARS']['FE']['ContentObjects']);
+		if (GeneralUtility::makeInstance(Typo3Version::class)->getMajorVersion() < 12) {			
+			$availableCObjects = array_keys($GLOBALS['TYPO3_CONF_VARS']['FE']['ContentObjects']);
+		} else {
+			// not used in TYPO3 12 anymore
+			$availableCObjects = [];
+		}
+		
 
 		// f.e. flat typoScript Objects with "_typoScriptNodeValue"
 		$isFlatCObject = (is_array($conf) && key_exists('_typoScriptNodeValue', $conf) && in_array($conf['_typoScriptNodeValue'], $availableCObjects));
@@ -184,6 +191,7 @@ class TypoScriptUtility
 		if ($isFlatCObject) {
 			return $cObj->cObjGetSingle($conf['_typoScriptNodeValue'], $conf);
 		}
+		
 		foreach ($conf as $key => $c) {
 
 			/* f.e.:				
@@ -197,13 +205,15 @@ class TypoScriptUtility
 				bla. = .... # <- 
 			*/
 
-			$cObjectParentKey = substr((string) $key, 0, -1);
-			$cObjectParentExists = $isSubConfiguration && key_exists($cObjectParentKey, $conf) && is_string($conf[$cObjectParentKey]) && in_array(trim($conf[$cObjectParentKey]), $availableCObjects);
-
-			$isCObjectConfiguration =
-				$cObjectParentExists &&
-				$isSubConfiguration
-			;
+			
+			$isCObjectConfiguration = false;
+			$potentialCObjectParentKey = substr((string) $key, 0, -1);
+			if($isSubConfiguration && key_exists($potentialCObjectParentKey, $conf) && is_string($conf[$potentialCObjectParentKey])) {
+				$potentialCObjectName = trim($conf[$potentialCObjectParentKey]);
+				$isCObjectConfiguration = 
+					(GeneralUtility::makeInstance(Typo3Version::class)->getMajorVersion() < 12) ?
+					in_array($potentialCObjectName, $availableCObjects) : ($cObj->getContentObject($potentialCObjectName) !== null);
+			}
 
 			// f.e. "=< lib.content"
 			$isReference = (is_string($c) && substr((string) $c, 0, 1) === '<');			
@@ -215,8 +225,7 @@ class TypoScriptUtility
 				$conf[$key] = static::populateTypoScriptConfiguration($config, $cObj, $maxNesting - 1);
 			}
 			else if ($isCObjectConfiguration) {				
-
-				$conf[$cObjectParentKey] = $cObj->cObjGetSingle($conf[$cObjectParentKey], $c);
+				$conf[$potentialCObjectParentKey] = $cObj->cObjGetSingle($conf[$potentialCObjectParentKey], $c);
 				// Delete Subinformations, because they rendered in the parent
 				unset($conf[$key]);
 
