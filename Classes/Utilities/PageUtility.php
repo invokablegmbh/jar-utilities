@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace Jar\Utilities\Utilities;
 
 use Jar\Utilities\Utilities\IteratorUtility;
+use TYPO3\CMS\Core\Database\Connection;
+use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Database\Query\QueryHelper;
+use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /*
@@ -74,7 +78,7 @@ class PageUtility
                 )
                 ->orderBy('uid');
             if ($permClause !== '') {
-                $queryBuilder->andWhere(QueryHelper::stripLogicalOperatorPrefix($permClause));
+                $queryBuilder->andWhere(QueryHelper::stripLogicalOperatorPrefix((string) $permClause));
             }
             $statement = $queryBuilder->executeQuery();
             while ($row = $statement->fetchAssociative()) {
