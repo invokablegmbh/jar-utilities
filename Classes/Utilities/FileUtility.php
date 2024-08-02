@@ -117,6 +117,8 @@ class FileUtility
 			'originalUrl' => $url,
 		);
 
+		$file = $fileReference->getOriginalFile();
+
 		if ($setup['showDetailedInformations']) {
 			$result['name'] = $fileReference->getName();
 			$result['extension'] = $fileReference->getExtension();
@@ -124,11 +126,12 @@ class FileUtility
 			$result['mimetype'] = $fileReference->getMimeType();
 			$result['size'] = $fileReference->getSize();
 			$result['basename'] = $fileReference->getNameWithoutExtension();
+			if ($file->isImage()) {
+				$result['width'] = $file->getProperty('width');
+				$result['height'] = $file->getProperty('height');
+			}
 		}
 
-
-		
-		$file = $fileReference->getOriginalFile();
 		if ($file->isImage()) {
 
 			// part for creating cropped image urls TYPO3\CMS\Core\Imaging\ImageManipulation\Area
