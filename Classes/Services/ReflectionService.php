@@ -495,6 +495,9 @@ class ReflectionService
 
 								$result[$targetKey] = &$this->relatedChildren[$currentLanguageUid][$foreignTable][$foreignField][$foreignSorting][$uid];
 							} else {
+								
+
+
 								// UID based mode
 								$relationHandler = GeneralUtility::makeInstance(RelationHandler::class);								
 								$relationHandler->start($rawValue, $foreignTable, $config['MM'] ?? '', $uid, $table, $config);
@@ -557,11 +560,14 @@ class ReflectionService
 							$dbResult = $relationHandler->getFromDB();
 
 							$resolvedItemArray = $relationHandler->getResolvedItemArray();
-
+							
 							if (empty($resolvedItemArray)) {
 								$result[$targetKey] = [];
 								break;
 							} else {
+
+								
+
 
 								// When we have just sub-relations from one other table, make huge select, otherwise load row for row
 								$foreignTables = IteratorUtility::pluck($resolvedItemArray, 'table');
@@ -744,7 +750,17 @@ class ReflectionService
 					->execute();
 
 				$rows = [];
+
+				$languageConfig = TcaUtility::getL10nConfig($table);
+				$transOrigPointerField = $languageConfig['transOrigPointerField'] ?? null;								
+
 				while ($row = $queryResult->fetch()) {
+					// case (f.e. at "sys_category"): the relation uses the default language uid, the row returns the uid used by translation
+					// we remap this on both uids in that language
+					if ($languageUid > 0 && $transOrigPointerField && isset($row[$transOrigPointerField]) && !empty($row[$transOrigPointerField]))  {
+						$row['uid'] = $row[$transOrigPointerField];
+					}
+
 					$rows[$row['uid']] = $row;
 				}
 
@@ -753,7 +769,9 @@ class ReflectionService
 					$this->loadedRelatedItems[$table] = [];
 				}
 
-				foreach ($ids as $id) {
+				foreach ($ids as $id) {					
+
+
 					// check if dataset still exist
 					if (array_key_exists($id, $rows)) {
 						$reflectedItem = &$this->buildArrayByRow($rows[$id], $table, 8, false);
@@ -764,6 +782,8 @@ class ReflectionService
 					$this->loadedRelatedItems[$table][$languageUid][$id] = $reflectedItem;
 					$this->relatedItems[$table][$languageUid][$id] = $reflectedItem;
 				}
+
+				
 			}
 
 			unset($this->unloadedRelatedItems[$table]);
