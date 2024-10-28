@@ -334,7 +334,12 @@ class TcaUtility
 	public static function getL10nConfig(string $table): ?array
 	{
 		$tableDefinition = static::getTca()[$table];
+
+		if (!isset($tableDefinition['ctrl']) || !isset($tableDefinition['ctrl']['transOrigPointerField']) || !isset($tableDefinition['ctrl']['languageField'])) {
+			return null;
+		}
 		$l10nEnabled = $tableDefinition['ctrl']['languageField'] && $tableDefinition['ctrl']['transOrigPointerField'];
+		
 		if (!$l10nEnabled) {
 			return null;
 		}
