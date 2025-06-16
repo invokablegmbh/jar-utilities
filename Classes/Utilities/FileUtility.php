@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Jar\Utilities\Utilities;
 
 use InvalidArgumentException;
+use Jar\Utilities\Event\BuildFileArrayBySysFileReferenceEvent;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use RuntimeException;
 use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Imaging\ImageManipulation\CropVariantCollection;
@@ -28,25 +30,32 @@ use UnexpectedValueException;
  */
 
 
-/** 
- * @package Jar\Utilities\Utilities 
+/**
+ * @package Jar\Utilities\Utilities
  * Handle files and their references.
  **/
 
 class FileUtility
 {
-	/**
+
+    public function __construct(
+        private readonly EventDispatcherInterface $eventDispatcher,
+    )
+    {
+    }
+
+    /**
 	 * Loads \TYPO3\CMS\Core\Resource\FileReference object from sys_file_reference table via uid.
-	 * 
+	 *
 	 * @param int $uid UID of the sys_file_reference record.
 	 * @return null|FileReference Return null if resource doesn't exist or file is missing.
-	 * @throws InvalidArgumentException 
+	 * @throws InvalidArgumentException
 	 */
 	public static function getFileReferenceByUid(int $uid): ?FileReference
-	{		
+	{
 		$fileRepository = GeneralUtility::makeInstance(FileRepository::class);
 		try {
-			$fileReference = $fileRepository->findFileReferenceByUid($uid);		
+			$fileReference = $fileRepository->findFileReferenceByUid($uid);
 		} catch(ResourceDoesNotExistException $e) {
 			return null;
 		}
@@ -63,12 +72,12 @@ class FileUtility
 	/**
 	 * Shorthand for FileUtility::buildFileArrayBySysFileReference(FileUtility::getFileReferenceByUid($uid)),
 	 * accepts the UID of an FileReference instead of using the FileReference object directly.
-	 * 
+	 *
 	 * @param int $uid UID of the sys_file_reference record.
 	 * @param null|array $configuration See Manual
 	 * @return null|array File-information array or ``null`` if resource doesn't exist or file is missing.
-	 * @throws InvalidArgumentException 
-	 * @throws RuntimeException 
+	 * @throws InvalidArgumentException
+	 * @throws RuntimeException
 	 */
 	public static function buildFileArrayBySysFileReferenceUid(int $uid, ?array $configuration = null): ?array
 	{
@@ -79,17 +88,17 @@ class FileUtility
 
 	/**
 	 * Preparation of files and images in a simple array structure. Very helpful in image preparation and cropping.
-	 * 
+	 *
 	 * @param null|FileReference $fileReference
-	 * @param null|array $configuration See Manual 	
+	 * @param null|array $configuration See Manual
 	 * @return null|array File-information array or ``null`` if resource doesn't exist or file is missing.
-	 * @throws InvalidArgumentException 
-	 * @throws RuntimeException 
-	 * @throws UnexpectedValueException 
+	 * @throws InvalidArgumentException
+	 * @throws RuntimeException
+	 * @throws UnexpectedValueException
 	 */
 	public static function buildFileArrayBySysFileReference(?FileReference $fileReference, ?array $configuration = []): ?array
 	{
-		
+
 		if ($fileReference === null || $fileReference->isMissing()) {
 			return null;
 		}
@@ -142,14 +151,14 @@ class FileUtility
 				foreach ($setup['tcaCropVariants'] as $cropName => $cropVariant) {
 					$cropSettings = $cropVariantCollection->getCropArea($cropName);
 					$processingInstructions = $setup['processingConfigurationForCrop'][$cropName] ?? [];
-					
+
 					ArrayUtility::mergeRecursiveWithOverrule($processingInstructions, [
 						'crop' => $cropSettings->makeAbsoluteBasedOnFile($file),
 					]);
 
-					// if no cropping is selected return svgs and animated gifs as raw path					
-					$croppedUrl = ($cropSettings->isEmpty() && ($fileReference->getExtension() === 'webm' || $fileReference->getExtension() === 'svg' || static::isFileReferenceIsAnimatedGif($fileReference))) ? $url : $file->process(ProcessedFile::CONTEXT_IMAGECROPSCALEMASK, $processingInstructions)->getPublicUrl();					
-					
+					// if no cropping is selected return svgs and animated gifs as raw path
+					$croppedUrl = ($cropSettings->isEmpty() && ($fileReference->getExtension() === 'webm' || $fileReference->getExtension() === 'svg' || static::isFileReferenceIsAnimatedGif($fileReference))) ? $url : $file->process(ProcessedFile::CONTEXT_IMAGECROPSCALEMASK, $processingInstructions)->getPublicUrl();
+
 					// special case: if cropping "default" is active, use this cropped image directly as direct result
 					if($cropName === 'default') {
 						$result['url'] = $croppedUrl;
@@ -185,6 +194,14 @@ class FileUtility
 					];
 				}
 			}
+
+            $eventDispatcher = GeneralUtility::makeInstance(EventDispatcherInterface::class);
+            /** @var DoingThisAndThatEvent $event */
+            $event = $eventDispatcher->dispatch(
+                new BuildFileArrayBySysFileReferenceEvent($result, $file)
+            );
+
+            $result = $event->getData();
 		}
 
 		return $result;
@@ -193,10 +210,10 @@ class FileUtility
 
 	/**
 	 * Returns the File object to a given path.
-	 * 
+	 *
 	 * @param string $path Path to the file
 	 * @return null|File File objectay or ``null`` if resource doesn't exist or file is missing.
-	 * @throws InvalidArgumentException 
+	 * @throws InvalidArgumentException
 	 */
 	public static function getFileByPath(string $path): ?File {
 
@@ -214,7 +231,7 @@ class FileUtility
 
 	/**
 	 * @param TYPO3\CMS\Core\Resource\FileReference $fileReference The file reference
-	 * @return bool 
+	 * @return bool
 	 */
 	public static function isFileReferenceIsAnimatedGif(FileReference $fileReference): bool {
 		if($fileReference->isMissing() || $fileReference->getExtension() !== 'gif') {
@@ -224,8 +241,8 @@ class FileUtility
 		// get absolute Path of fileReference ans add absolute path of storage
 		$filename = Environment::getPublicPath() . $fileReference->getOriginalFile()->getPublicUrl();
 
-		
-		
+
+
 		if(!($fh = @fopen($filename, 'rb'))) {
         	return false;
 		}
@@ -255,12 +272,12 @@ class FileUtility
 	 * @param null|File $file The file object
 	 * @param null|array $configuration See Manual
 	 * @return null|array File-information array or ``null`` if resource doesn't exist or file is missing.
-	 * @throws InvalidArgumentException 
-	 * @throws RuntimeException 
-	 * @throws UnexpectedValueException 
+	 * @throws InvalidArgumentException
+	 * @throws RuntimeException
+	 * @throws UnexpectedValueException
 	 */
 	public static function buildFileArrayByFile(?File $file, ?array $configuration = []): ?array
-	{	
+	{
 		if(empty($file)) {
 			return null;
 		}
@@ -293,9 +310,9 @@ class FileUtility
 	 * @param null|string $path The file path
 	 * @param null|array $configuration See Manual
 	 * @return null|array File-information array or ``null`` if resource doesn't exist or file is missing.
-	 * @throws InvalidArgumentException 
-	 * @throws RuntimeException 
-	 * @throws UnexpectedValueException 
+	 * @throws InvalidArgumentException
+	 * @throws RuntimeException
+	 * @throws UnexpectedValueException
 	 */
 	public static function buildFileArrayByPath(?string $path, ?array $configuration = []): ?array
 	{
@@ -307,7 +324,7 @@ class FileUtility
 
 	/**
 	 * Converts filesizes in a human readable format.
-	 * 
+	 *
 	 * @param int $bytes Size of file in bytes.
 	 * @param int $decimals (optional) Length of decimals.
 	 * @return string Filesize in human readable format.
