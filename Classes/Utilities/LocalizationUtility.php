@@ -64,7 +64,7 @@ class LocalizationUtility
      * @return string The translation value or the translation key, when no translation is found.
      */
     public static function localize(?string $input): string {
-        if(empty($input)) {
+        if(in_array($input, [null, '', '0'], true)) {
             return '';
         }
         return self::getLanguageService()->sL($input) ?? $input;

@@ -13,9 +13,9 @@ use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Http\ApplicationType;
 use TYPO3\CMS\Core\Information\Typo3Version;
-use TYPO3\CMS\Core\TypoScript\TemplateService;
+use TYPO3\CMS\Core\TypoScript\FrontendTypoScriptFactory;
 use TYPO3\CMS\Core\Utility\RootlineUtility;
-use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
+use TYPO3\CMS\Core\Site\SiteFinder;
 
 /*
  * This file is part of the JAR/Utilities project under GPLv2 or later.
@@ -45,13 +45,13 @@ class TypoScriptUtility
 	{
 		$cache = GeneralUtility::makeInstance(RegistryService::class);
 
-		$cachePage = $pageUid === null ? BackendUtility::currentPageUid() : $pageUid;
+		$cachePage = $pageUid ?? BackendUtility::currentPageUid();
 		$hash = $path . '_' . ((int)$cachePage) . '_' . $populated;
 		if (($ts_array = $cache->get('ts', $hash)) === false) {
 			if (isset($GLOBALS['TSFE']) && $pageUid === null && (($GLOBALS['TYPO3_REQUEST'] ?? null) instanceof ServerRequestInterface
 			&& ApplicationType::fromRequest($GLOBALS['TYPO3_REQUEST'])->isFrontend()
 		)) {
-				$setup = $GLOBALS['TSFE']->tmpl->setup;
+				$setup = $GLOBALS['TYPO3_REQUEST']->getAttribute('frontend.typoscript')->getSetupArray();
 			} else {
                 $setup = static::loadTypoScript($pageUid);
             }
@@ -59,7 +59,7 @@ class TypoScriptUtility
 			
 			$ts_array = static::convertTypoScriptArrayToPlainArray($setup);
 
-			if (!empty($path)) {
+			if (!in_array($path, [null, '', '0'], true)) {
 				$ts_array = static::getRecursiveKeyFromArray($ts_array, explode('.', $path));
 			}
 
@@ -91,10 +91,10 @@ class TypoScriptUtility
 		}
 		$firstKey = reset($keylist);
 		if (!isset($array[$firstKey])) {
-			return null;
-		} else if(!is_array($array[$firstKey])) {
-			return $array[$firstKey];
-		} else {
+            return null;
+        } elseif (!is_array($array[$firstKey])) {
+            return $array[$firstKey];
+        } else {
 			return static::getRecursiveKeyFromArray($array[$firstKey], array_slice($keylist, 1));
 		}
 	}
@@ -122,12 +122,43 @@ class TypoScriptUtility
 		}
 
 		$pageUid = intval($pageUid);
-		$rootLineUtility = GeneralUtility::makeInstance(RootlineUtility::class, $pageUid);
-		$TSObj = GeneralUtility::makeInstance(TemplateService::class);
-		$TSObj->runThroughTemplates($rootLineUtility->get());
-		$TSObj->generateConfig();
-
-		return empty($TSObj->setup) ? [] : $TSObj->setup;
+		
+		// TYPO3 v13 compatibility: In backend context, use container to get FrontendTypoScriptFactory
+		try {
+			$siteFinder = GeneralUtility::makeInstance(SiteFinder::class);
+			$site = $siteFinder->getSiteByPageId($pageUid);
+			$rootLineUtility = GeneralUtility::makeInstance(RootlineUtility::class, $pageUid);
+			$rootLine = $rootLineUtility->get();
+			
+			// Get sys_template rows for the page
+			$queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)
+				->getQueryBuilderForTable('sys_template');
+			$sysTemplateRows = $queryBuilder
+				->select('*')
+				->from('sys_template')
+				->where(
+					$queryBuilder->expr()->in('pid', array_column($rootLine, 'uid'))
+				)
+				->orderBy('pid')
+				->addOrderBy('sorting')
+				->executeQuery()
+				->fetchAllAssociative();
+			
+			// Get FrontendTypoScriptFactory from container with all dependencies
+			$container = GeneralUtility::getContainer();
+			$frontendTypoScriptFactory = $container->get(FrontendTypoScriptFactory::class);
+			$frontendTypoScript = $frontendTypoScriptFactory->createSettingsAndSetupConditions(
+				$site,
+				$sysTemplateRows,
+				[], // expressionMatcherVariables
+				null // typoScriptCache
+			);
+			
+			return $frontendTypoScript->getSetupArray();
+		} catch (\Exception) {
+			// Fallback to empty array if something goes wrong
+			return [];
+		}
 	}
 
 
@@ -173,7 +204,7 @@ class TypoScriptUtility
 			return [];
 		}
 
-		if($cObj === null) {
+		if(!$cObj instanceof ContentObjectRenderer) {
 			$cObj = GeneralUtility::makeInstance(ContentObjectRenderer::class);
 		}
 
@@ -186,7 +217,7 @@ class TypoScriptUtility
 		
 
 		// f.e. flat typoScript Objects with "_typoScriptNodeValue"
-		$isFlatCObject = (is_array($conf) && key_exists('_typoScriptNodeValue', $conf) && in_array($conf['_typoScriptNodeValue'], $availableCObjects));
+		$isFlatCObject = (is_array($conf) && array_key_exists('_typoScriptNodeValue', $conf) && in_array($conf['_typoScriptNodeValue'], $availableCObjects));
 
 		if ($isFlatCObject) {
 			return $cObj->cObjGetSingle($conf['_typoScriptNodeValue'], $conf);
@@ -198,7 +229,7 @@ class TypoScriptUtility
 				bla. = .... # <- This
 			*/
 
-			$isSubConfiguration = (substr((string) $key, -1) === '.');
+			$isSubConfiguration = (str_ends_with((string) $key, '.'));
 
 			/* f.e.:
 				bla = TEXT	# <- This combination
@@ -208,7 +239,7 @@ class TypoScriptUtility
 			
 			$isCObjectConfiguration = false;
 			$potentialCObjectParentKey = substr((string) $key, 0, -1);
-			if($isSubConfiguration && key_exists($potentialCObjectParentKey, $conf) && is_string($conf[$potentialCObjectParentKey])) {
+			if($isSubConfiguration && array_key_exists($potentialCObjectParentKey, $conf) && is_string($conf[$potentialCObjectParentKey])) {
 				$potentialCObjectName = trim($conf[$potentialCObjectParentKey]);
 				$isCObjectConfiguration = 
 					(GeneralUtility::makeInstance(Typo3Version::class)->getMajorVersion() < 12) ?
@@ -216,31 +247,25 @@ class TypoScriptUtility
 			}
 
 			// f.e. "=< lib.content"
-			$isReference = (is_string($c) && substr((string) $c, 0, 1) === '<');			
+			$isReference = (is_string($c) && str_starts_with((string) $c, '<'));			
 
-			if ($isReference) {	
-				$referenceKey = trim(substr($c, 1));
-				$config = array_replace_recursive(self::get($referenceKey), $conf[$key . '.'] ?? []);
-
-				$conf[$key] = static::populateTypoScriptConfiguration($config, $cObj, $maxNesting - 1);
-			}
-			else if ($isCObjectConfiguration) {				
-				$conf[$potentialCObjectParentKey] = $cObj->cObjGetSingle($conf[$potentialCObjectParentKey], $c);
-				// Delete Subinformations, because they rendered in the parent
-				unset($conf[$key]);
-
-			} else if ($isSubConfiguration) {		
-				// when no Parent exist save the values and remove the . at the end (just a subconfiguration, for parent/child cObjects, see above)		
-				$parentKey = substr($key, 0, -1);
-				$conf[$parentKey] = static::populateTypoScriptConfiguration($c,$cObj, $maxNesting - 1);
-				unset($conf[$key]);
-
-			} else {
-				// resolve arrays and check for subconfigurations
-				if(is_array($c)) {
-					$conf[$key] = static::populateTypoScriptConfiguration($c,$cObj, $maxNesting - 1);
-				}
-			}
+			if ($isReference) {
+                $referenceKey = trim(substr($c, 1));
+                $config = array_replace_recursive(self::get($referenceKey), $conf[$key . '.'] ?? []);
+                $conf[$key] = static::populateTypoScriptConfiguration($config, $cObj, $maxNesting - 1);
+            } elseif ($isCObjectConfiguration) {
+                $conf[$potentialCObjectParentKey] = $cObj->cObjGetSingle($conf[$potentialCObjectParentKey], $c);
+                // Delete Subinformations, because they rendered in the parent
+                unset($conf[$key]);
+            } elseif ($isSubConfiguration) {
+                // when no Parent exist save the values and remove the . at the end (just a subconfiguration, for parent/child cObjects, see above)		
+                $parentKey = substr((string) $key, 0, -1);
+                $conf[$parentKey] = static::populateTypoScriptConfiguration($c,$cObj, $maxNesting - 1);
+                unset($conf[$key]);
+            } elseif (is_array($c)) {
+                // resolve arrays and check for subconfigurations
+                $conf[$key] = static::populateTypoScriptConfiguration($c,$cObj, $maxNesting - 1);
+            }
 		}
 
 		return $conf;

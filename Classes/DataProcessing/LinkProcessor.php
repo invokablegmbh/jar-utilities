@@ -4,14 +4,9 @@ declare(strict_types=1);
 
 namespace Jar\Utilities\DataProcessing;
 
-use Jar\Utilities\Services\ReflectionService;
 use Jar\Utilities\Utilities\FormatUtility;
-use Jar\Utilities\Utilities\StringUtility;
 use Jar\Utilities\Utilities\TypoScriptUtility;
 use TYPO3\CMS\Core\Utility\ArrayUtility;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
-use TYPO3\CMS\Frontend\ContentObject\ContentDataProcessor;
 use TYPO3\CMS\Frontend\ContentObject\DataProcessorInterface;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 
@@ -65,13 +60,13 @@ class LinkProcessor implements DataProcessorInterface
         ArrayUtility::mergeRecursiveWithOverrule($linkConfiguration, $populatedProcessorConfiguration);
         $stringKeys = ['target', 'class', 'title'];
         foreach ($linkConfiguration as $key => $value) {
-            if (in_array($key, $stringKeys) && $value !== '-' && !empty($value)) {
+            if (in_array($key, $stringKeys) && $value !== '-' && $value !== 0) {
                 $linkConfiguration[$key] = '"' . $value . '"';
             }
         }
 
         $paramQuery = http_build_query($linkConfiguration['params'] ?? []);
-        $linkString = 't3://page?uid=' . $linkConfiguration['page'] . (empty($paramQuery) ? '' : '&' . $paramQuery) . ' ' . $linkConfiguration['target'] . ' ' . $linkConfiguration['class'] . ' ' . $linkConfiguration['title'];
+        $linkString = 't3://page?uid=' . $linkConfiguration['page'] . ($paramQuery === '' || $paramQuery === '0' ? '' : '&' . $paramQuery) . ' ' . $linkConfiguration['target'] . ' ' . $linkConfiguration['class'] . ' ' . $linkConfiguration['title'];
 
         $key = $populatedProcessorConfiguration['as'] ?? 'link';
         $processedData[$key] = FormatUtility::buildLinkArray($linkString);

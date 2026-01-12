@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Jar\Utilities\Utilities;
 
+use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 use InvalidArgumentException;
 use Jar\Utilities\Services\RegistryService;
 use TYPO3\CMS\Core\Core\Environment;
@@ -44,7 +45,7 @@ class BackendUtility
 			$router = $site->getRouter();
 			return (string)$router->generateUri($pageUid, $params);
 		}
-		$cObj = GeneralUtility::makeInstance(\TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer::class);
+		$cObj = GeneralUtility::makeInstance(ContentObjectRenderer::class);
 
 		$linkConf = [
 			'parameter' => $pageUid,
@@ -65,28 +66,33 @@ class BackendUtility
 	 * */
 	public static function currentPageUid(): ?int
 	{
+		// Check if request is available (TYPO3 v13 compatibility)
+		if (!isset($GLOBALS['TYPO3_REQUEST'])) {
+			return null;
+		}
+
+		$request = $GLOBALS['TYPO3_REQUEST'];
+
 		if (
-			isset($GLOBALS)
-			&& isset($GLOBALS['TYPO3_REQUEST'])
-			&& $GLOBALS['TYPO3_REQUEST']->getAttribute('route')
-			&& $GLOBALS['TYPO3_REQUEST']->getAttribute('route')->getOption('moduleName')
-			&& strpos($GLOBALS['TYPO3_REQUEST']->getAttribute('route')->getOption('moduleName'), 'file_') !==  false
+			$request->getAttribute('route')
+			&& $request->getAttribute('route')->getOption('moduleName')
+			&& str_contains((string) $request->getAttribute('route')->getOption('moduleName'), 'file_')
 		) {
 			return null;
 		} else {
-			if (!empty(GeneralUtility::_GP('id'))) {
-				return (int) GeneralUtility::_GP('id');
+			if (!empty($request->getParsedBody()['id'] ?? $request->getQueryParams()['id'] ?? null)) {
+				return (int) ($request->getParsedBody()['id'] ?? $request->getQueryParams()['id'] ?? null);
 			}
 
-			if (!empty(GeneralUtility::_GP('returnUrl'))) {
-				parse_str(end(explode('?', GeneralUtility::_GP('returnUrl'))), $output);
-				if (!empty($output['id'])) {
+			if (!empty($request->getParsedBody()['returnUrl'] ?? $request->getQueryParams()['returnUrl'] ?? null)) {
+				parse_str(end(explode('?', $request->getParsedBody()['returnUrl'] ?? $request->getQueryParams()['returnUrl'] ?? null)), $output);
+				if (isset($output['id']) && ($output['id'] !== [] && ($output['id'] !== '' && $output['id'] !== '0'))) {
 					return (int) $output['id'];
 				}
 			}
 
 			if (isset($GLOBALS['TSFE'])) {
-				return (int) $GLOBALS['TSFE']->id;
+				return (int) $request->getAttribute('frontend.page.information')->getId();
 			}
 		}
 		
@@ -116,7 +122,7 @@ class BackendUtility
 			}
 		}
 		// We have not found a FQDN yet
-		if ($host && strpos($host, '.') === false) {
+		if ($host && !str_contains($host, '.')) {
 			$ip = gethostbyname($host);
 			// We got an IP address
 			if ($ip != $host) {
@@ -146,9 +152,9 @@ class BackendUtility
 		$record = BackendUtilityCore::getRecord($table, $uid);
 
 		$localCalcPerms = $GLOBALS['BE_USER']->calcPerms($record);
-		$permsEdit = $localCalcPerms & ($table == 'tt_content' ? Permission::CONTENT_EDIT : Permission::PAGE_EDIT);
+		$permsEdit = $localCalcPerms & ($table === 'tt_content' ? Permission::CONTENT_EDIT : Permission::PAGE_EDIT);
 
-		if ($permsEdit) {
+		if ($permsEdit !== 0) {
 			$uriBuilder = GeneralUtility::makeInstance(UriBuilder::class);
 			$returnUrl = $uriBuilder->buildUriFromRoute('web_layout', ['id' => static::currentPageUid()])  . ('#element-' . $table . '-' . $uid);
 
@@ -173,7 +179,7 @@ class BackendUtility
 	{
 		$editLink = static::getEditLink($table, $uid);
 
-		return empty($editLink) ? $content : '<a href="' . $editLink . '">' . $content . '</a>';
+		return $editLink === '' || $editLink === '0' ? $content : '<a href="' . $editLink . '">' . $content . '</a>';
 	}
 
 

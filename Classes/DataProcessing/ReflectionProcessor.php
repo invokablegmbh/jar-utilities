@@ -8,7 +8,6 @@ use Jar\Utilities\Services\ReflectionService;
 use Jar\Utilities\Utilities\TypoScriptUtility;
 use TYPO3\CMS\Core\Utility\ArrayUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 use TYPO3\CMS\Frontend\ContentObject\ContentDataProcessor;
 use TYPO3\CMS\Frontend\ContentObject\DataProcessorInterface;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
@@ -81,11 +80,11 @@ class ReflectionProcessor implements DataProcessorInterface
         $row = $populatedProcessorConfiguration['row'] ?? $processedData['data'] ?? $processedData;
         $maxDepth = $populatedProcessorConfiguration['maxDepth'] ?? 8;
 
-        $reflectionService = GeneralUtility::makeInstance(ReflectionService::class);        
+        $reflectionService = GeneralUtility::makeInstance(ReflectionService::class);
         $reflectionService->setPropertiesByConfigurationArray($populatedProcessorConfiguration);
 
         // special case: when $processedData has the property "rows" use that instead and handle the whole list (performance boost by nested DataProcessors) 
-        $singleRowMode = !key_exists('rows', $processedData);
+        $singleRowMode = !array_key_exists('rows', $processedData);
         if($singleRowMode) {
             $result = reset($reflectionService->buildArrayByRows([$row], $table, $maxDepth));            
         } else {
@@ -104,16 +103,14 @@ class ReflectionProcessor implements DataProcessorInterface
 
         if (!empty($populatedProcessorConfiguration['as'])) {
             $processedData[$populatedProcessorConfiguration['as']] = $result;
-        } else {
-            if($singleRowMode) {
-                if((bool) ($populatedProcessorConfiguration['replace'] ?? false)) {
-                    $processedData = $result;
-                } else {
-                    ArrayUtility::mergeRecursiveWithOverrule($processedData, $result);            
-                }
-            } else {
+        } elseif ($singleRowMode) {
+            if((bool) ($populatedProcessorConfiguration['replace'] ?? false)) {
                 $processedData = $result;
+            } else {
+                ArrayUtility::mergeRecursiveWithOverrule($processedData, $result);            
             }
+        } else {
+            $processedData = $result;
         }
 
         return $processedData;

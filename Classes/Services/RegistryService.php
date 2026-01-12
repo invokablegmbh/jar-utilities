@@ -4,20 +4,19 @@ declare(strict_types=1);
 
 namespace Jar\Utilities\Services;
 
+use TYPO3\CMS\Core\SingletonInterface;
+
 /*
  * This file is part of the JAR/Utilities project under GPLv2 or later.
  *
  * For the full copyright and license information, please read the
  * LICENSE.md file that was distributed with this source code.
  */
-
-
 /** 
  * @package Jar\Utilities\Services 
  * Simple Memory Cache Class, handy for use before TYPO3 native Caches are available (they can not be injected/instantiated during ext_localconf.php)
  **/
-
-class RegistryService  implements \TYPO3\CMS\Core\SingletonInterface
+class RegistryService  implements SingletonInterface
 {
 
 	/**

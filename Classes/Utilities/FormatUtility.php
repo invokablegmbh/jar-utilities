@@ -7,7 +7,6 @@ namespace Jar\Utilities\Utilities;
 use InvalidArgumentException;
 use TYPO3\CMS\Core\Http\ApplicationType;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 
 /*
@@ -33,7 +32,7 @@ class FormatUtility
 	public static function buildLinkArray(?string $params): ?array
 	{
 
-		if (empty($params)) {
+		if (in_array($params, [null, '', '0'], true)) {
 			return null;
 		}
 
@@ -43,14 +42,17 @@ class FormatUtility
 
 		$parts = str_getcsv($params, ' ');
 
-		if (!empty($parts[1]) && $parts[1] != '-')
-			$target = $parts[1];
-		if (!empty($parts[2]) && $parts[2] != '-')
-			$class = $parts[2];
-		if (!empty($parts[3]) && $parts[3] != '-')
-			$text = stripslashes($parts[3]);
+		if (isset($parts[1]) && ($parts[1] !== '' && $parts[1] !== '0') && $parts[1] != '-') {
+            $target = $parts[1];
+        }
+		if (isset($parts[2]) && ($parts[2] !== '' && $parts[2] !== '0') && $parts[2] != '-') {
+            $class = $parts[2];
+        }
+		if (isset($parts[3]) && ($parts[3] !== '' && $parts[3] !== '0') && $parts[3] != '-') {
+            $text = stripslashes($parts[3]);
+        }
 
-		$cObj = GeneralUtility::makeInstance(\TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer::class);
+		$cObj = GeneralUtility::makeInstance(ContentObjectRenderer::class);
 
 		$url = $cObj->typolink_URL([
 			'parameter' => $parts[0],
@@ -64,12 +66,12 @@ class FormatUtility
 
 		$origUrl = $url;
 		$addParams = '';
-		if (!empty($parts[4]) && $parts[4] != '-') {
+		if (isset($parts[4]) && ($parts[4] !== '' && $parts[4] !== '0') && $parts[4] != '-') {
 			$origUrl .= $parts[4];
 			$addParams = $parts[4];
 		}
 
-		return array(
+		return [
 			'url' => $origUrl,
 			'base' => $url,
 			'params' => $addParams,
@@ -77,7 +79,7 @@ class FormatUtility
 			'text' => $text,
 			'class' => $class,
 			'raw' => $params,
-		);
+		];
 	}
 
 
@@ -89,7 +91,7 @@ class FormatUtility
 	 */
 	public static function buildTimeArray(int $time): ?array
 	{
-		if (empty($time)) {
+		if ($time === 0) {
 			return null;
 		}
 		$timeFormated = gmdate('H:i', (int)$time);
@@ -107,7 +109,7 @@ class FormatUtility
 
 	public static function buildDateTimeArrayFromString(string $date): ?array
 	{
-		if (empty($date)) {
+		if ($date === '' || $date === '0') {
 			return null;
 		}
 
@@ -181,6 +183,6 @@ class FormatUtility
 	}
 
 	protected static function getParseFuncConf() {
-		return array ( 'makelinks' => 0, 'makelinks.' => array ( 'http.' => array ( 'keep' => 'path', 'extTarget' => '_blank', ), 'mailto.' => array ( 'keep' => 'path', ), ), 'tags.' => array ( 'a' => 'TEXT', 'a.' => array ( 'current' => '1', 'typolink.' => array ( 'parameter.' => array ( 'data' => 'parameters:href', ), 'title.' => array ( 'data' => 'parameters:title', ), 'ATagParams.' => array ( 'data' => 'parameters:allParams', ), 'target.' => array ( 'ifEmpty.' => array ( 'data' => 'parameters:target', ), ), 'extTarget.' => array ( 'ifEmpty.' => array ( 'override' => '_blank', ), 'override.' => array ( 'data' => 'parameters:target', ), ), ), ), ), 'allowTags' => 'a, abbr, acronym, address, article, aside, b, bdo, big, blockquote, br, caption, center, cite, code, col, colgroup, dd, del, dfn, dl, div, dt, em, figure, font, footer, header, h1, h2, h3, h4, h5, h6, hr, i, img, ins, kbd, label, li, link, meta, nav, ol, p, pre, q, s, samp, sdfield, section, small, span, strike, strong, style, sub, sup, table, thead, tbody, tfoot, td, th, tr, title, tt, u, ul, var', 'denyTags' => '*', 'constants' => '1', 'nonTypoTagStdWrap.' => array ( 'HTMLparser' => '1', 'HTMLparser.' => array ( 'keepNonMatchedTags' => '1', 'htmlSpecialChars' => '2', ), ), 'htmlSanitize' => '1', );
+		return  [ 'makelinks' => 0, 'makelinks.' =>  [ 'http.' =>  [ 'keep' => 'path', 'extTarget' => '_blank', ], 'mailto.' =>  [ 'keep' => 'path', ], ], 'tags.' =>  [ 'a' => 'TEXT', 'a.' =>  [ 'current' => '1', 'typolink.' =>  [ 'parameter.' =>  [ 'data' => 'parameters:href', ], 'title.' =>  [ 'data' => 'parameters:title', ], 'ATagParams.' =>  [ 'data' => 'parameters:allParams', ], 'target.' =>  [ 'ifEmpty.' =>  [ 'data' => 'parameters:target', ], ], 'extTarget.' =>  [ 'ifEmpty.' =>  [ 'override' => '_blank', ], 'override.' =>  [ 'data' => 'parameters:target', ], ], ], ], ], 'allowTags' => 'a, abbr, acronym, address, article, aside, b, bdo, big, blockquote, br, caption, center, cite, code, col, colgroup, dd, del, dfn, dl, div, dt, em, figure, font, footer, header, h1, h2, h3, h4, h5, h6, hr, i, img, ins, kbd, label, li, link, meta, nav, ol, p, pre, q, s, samp, sdfield, section, small, span, strike, strong, style, sub, sup, table, thead, tbody, tfoot, td, th, tr, title, tt, u, ul, var', 'denyTags' => '*', 'constants' => '1', 'nonTypoTagStdWrap.' =>  [ 'HTMLparser' => '1', 'HTMLparser.' =>  [ 'keepNonMatchedTags' => '1', 'htmlSpecialChars' => '2', ], ], 'htmlSanitize' => '1', ];
 	}
 }

@@ -194,12 +194,19 @@ class ReflectionService
 	 */
 	private bool $enableCache = true;
 
+	private ConnectionPool $connectionPool;
+
 	/**
 	 * Just load basic fields of related childrens
 	 *
 	 * @var bool
 	 */
 	private bool $fetchBasicRelationFields = false;
+    public function __construct(ConnectionPool $connectionPool)
+    {
+		$this->connectionPool = $connectionPool
+        ?? GeneralUtility::makeInstance(ConnectionPool::class);
+    }
 
 	/**
 	 * Reflects a list of record rows.
@@ -231,7 +238,7 @@ class ReflectionService
 					serialize($this->fieldFinisherMethods) .
 					serialize($this->relatedItems) .
 					serialize($this->relatedChildren) .
-					GeneralUtility::_GP('frontend_editing')
+					($GLOBALS['TYPO3_REQUEST']->getParsedBody()['frontend_editing'] ?? $GLOBALS['TYPO3_REQUEST']->getQueryParams()['frontend_editing'] ?? null)
 			);
 			$cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('jar_utilities_reflection');
 		}
@@ -283,7 +290,7 @@ class ReflectionService
 		$result = [];
 		$result['uid'] = $uid = $row['uid'];
 
-		if (empty($row)) {
+		if ($row === []) {
 			return [];
 		}
 
@@ -320,17 +327,13 @@ class ReflectionService
 			$config = $tcaDefinition['config'] ?? [];
 
 			// final key name in result list
-			if (empty($removeablePrefixes)) {
-				$targetKey = $tcaColumn;
-			} else {
-				$targetKey = str_replace($removeablePrefixes, '', $tcaColumn);
-			}
-			if (!empty($columnRemapping) && key_exists($targetKey, $columnRemapping)) {
+			$targetKey = empty($removeablePrefixes) ? $tcaColumn : str_replace($removeablePrefixes, '', $tcaColumn);
+			if (!empty($columnRemapping) && array_key_exists($targetKey, $columnRemapping)) {
 				$targetKey = $columnRemapping[$targetKey];
 			}
 
 			// Store the TCA informations for post handling
-			if (!key_exists($table, $this->tcaFieldDefinition)) {
+			if (!array_key_exists($table, $this->tcaFieldDefinition)) {
 				$this->tcaFieldDefinition[$table] = [];
 			}
 			$this->tcaFieldDefinition[$table][$targetKey] = $tcaDefinition;
@@ -340,10 +343,8 @@ class ReflectionService
 				$result[$targetKey] = $row[$tcaColumn] ?? [];
 			} else {
 				// populate the raw row informations (unless it is a password field)
-				if (!empty($config['eval'])) {
-					if (strpos($config['eval'], 'password') !== false) {
-						continue;
-					}
+				if (!empty($config['eval']) && str_contains((string) $config['eval'], 'password')) {
+					continue;
 				}
 
 				$rawValue = $row[$tcaColumn] ?? '';
@@ -364,12 +365,12 @@ class ReflectionService
 								break;
 							case 'inputDateTime':
 								// Date, Time and DateTime Fields
-								$eval = GeneralUtility::trimExplode(',', strtolower($config['eval']));
+								$eval = GeneralUtility::trimExplode(',', strtolower((string) $config['eval']));
 								if (in_array('time', $eval)) {
-									$result[$targetKey] = FormatUtility::buildTimeArray($rawValue);
-								} else  if (in_array('datetime', $eval) || in_array('date', $eval)) {
-									$result[$targetKey] = FormatUtility::buildDateTimeArrayFromString((string) $rawValue);
-								} else {
+                                    $result[$targetKey] = FormatUtility::buildTimeArray($rawValue);
+                                } elseif (in_array('datetime', $eval) || in_array('date', $eval)) {
+                                    $result[$targetKey] = FormatUtility::buildDateTimeArrayFromString((string) $rawValue);
+                                } else {
 									$result[$targetKey] = $rawValue;
 								}
 								break;
@@ -381,14 +382,12 @@ class ReflectionService
 					case 'text':
 						// Textareas and RTE: add <br> to textareas, parse the content for RTE Text
 						if (!array_key_exists('enableRichtext', $config)) {
-							$result[$targetKey] = nl2br($rawValue ?? '');
-						} else {
-							if (!empty($rawValue)) {
-								$result[$targetKey] = FormatUtility::renderRteContent($rawValue);
-							} else {
+                            $result[$targetKey] = nl2br($rawValue ?? '');
+                        } elseif (!empty($rawValue)) {
+                            $result[$targetKey] = FormatUtility::renderRteContent($rawValue);
+                        } else {
 								$result[$targetKey] = $rawValue;
 							}
-						}
 						break;
 
 					case 'check':
@@ -431,7 +430,7 @@ class ReflectionService
 							
 							// switch to the real UID for translated elements
 							if ($currentLanguageUid !== 0) {
-								$uid = $row['_LOCALIZED_UID'] ?? $row['_PAGES_OVERLAY_UID'] ?? $uid;
+								$uid = $row['_LOCALIZED_UID'] ?? $row['_LOCALIZED_UID'] ?? $uid;
 							}
 
 							$relationHandler = GeneralUtility::makeInstance(RelationHandler::class);
@@ -448,7 +447,7 @@ class ReflectionService
 									// fallback to default cropVariants
 									$defaultCropVariants = $GLOBALS['TCA']['sys_file_reference']['columns']['crop']['config']['cropVariants'] ?? [];
 									ArrayUtility::mergeRecursiveWithOverrule($cropVariants, $defaultCropVariants);
-									if(empty($cropVariants)) {									
+									if($cropVariants === []) {									
 										$cropVariants = [
 											'default' => []
 										];
@@ -460,7 +459,7 @@ class ReflectionService
 
 									$fileArray = FileUtility::buildFileArrayBySysFileReferenceUid($resolvedItem['uid'], $fileBuidlingConfiguration);
 
-									if (!empty($fileArray)) {
+									if ($fileArray !== null && $fileArray !== []) {
 										$result[$targetKey][] = $fileArray;
 									}
 								}
@@ -476,7 +475,7 @@ class ReflectionService
 
 								// switch to the real UID for translated elements
 								if ($currentLanguageUid !== 0) {
-									$uid = $row['_LOCALIZED_UID'] ?? $row['_PAGES_OVERLAY_UID'] ?? $uid;
+									$uid = $row['_LOCALIZED_UID'] ?? $row['_LOCALIZED_UID'] ?? $uid;
 								}
 
 								$foreignField = $config['foreign_field'];
@@ -507,22 +506,22 @@ class ReflectionService
 									$foreignRelationId = $item['id'];
 
 									// just set markers to relations
-									if (!key_exists($foreignRelationTable, $this->relatedItems)) {
+									if (!array_key_exists($foreignRelationTable, $this->relatedItems)) {
 										$this->relatedItems[$foreignRelationTable] = [];
 									}
-									if (!key_exists($foreignRelationTable, $this->unloadedRelatedItems)) {
+									if (!array_key_exists($foreignRelationTable, $this->unloadedRelatedItems)) {
 										$this->unloadedRelatedItems[$foreignRelationTable] = [];
 									}
-									if (!key_exists($foreignRelationTable, $this->loadedRelatedItems)) {
+									if (!array_key_exists($foreignRelationTable, $this->loadedRelatedItems)) {
 										$this->loadedRelatedItems[$foreignRelationTable] = [];
 									}
-									if (!key_exists($currentLanguageUid, $this->relatedItems[$foreignRelationTable])) {
+									if (!array_key_exists($currentLanguageUid, $this->relatedItems[$foreignRelationTable])) {
 										$this->relatedItems[$foreignRelationTable][$currentLanguageUid] = [];
 									}
-									if (!key_exists($currentLanguageUid, $this->unloadedRelatedItems[$foreignRelationTable])) {
+									if (!array_key_exists($currentLanguageUid, $this->unloadedRelatedItems[$foreignRelationTable])) {
 										$this->unloadedRelatedItems[$foreignRelationTable][$currentLanguageUid] = [];
 									}
-									if (!key_exists($currentLanguageUid, $this->loadedRelatedItems[$foreignRelationTable])) {
+									if (!array_key_exists($currentLanguageUid, $this->loadedRelatedItems[$foreignRelationTable])) {
 										$this->loadedRelatedItems[$foreignRelationTable][$currentLanguageUid] = [];
 									}
 
@@ -545,18 +544,11 @@ class ReflectionService
 							$relationHandler->start($rawValue, $foreignTable, $config['MM'] ?? '', $uid, $table, $config);
 							// thus the relation handler works only with elements in the default language, just use in that case,
 							// otherwise load the elements on our own
-							if ($currentLanguageUid === 0) {
-								$relationHandler->setFetchAllFields(true);
-							}
 
 							// don't fetch hidden and deleted items
-							$queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable($foreignTable)->createQueryBuilder();
+							$queryBuilder = $this->connectionPool->getConnectionForTable($foreignTable)->createQueryBuilder();
 							$relationHandler->additionalWhere[$foreignTable] = $queryBuilder->expr()->eq('hidden', 0) . ' AND ' . $queryBuilder->expr()->eq('deleted', 0);
 
-							// we have to load the elements twice, first (here) in default and later as translated value
-							if($this->fetchBasicRelationFields) {								
-								$relationHandler->setFetchAllFields(false);
-							}
 							$dbResult = $relationHandler->getFromDB();
 
 							$resolvedItemArray = $relationHandler->getResolvedItemArray();
@@ -588,18 +580,14 @@ class ReflectionService
 										}
 									} else {
 										// load translated elements on our own									
-										$connectionPool = GeneralUtility::makeInstance(ConnectionPool::class);
+										$connectionPool = $this->connectionPool;
 										$queryBuilder = $connectionPool->getQueryBuilderForTable($foreignTable);
 
 										$fields = $this->fetchBasicRelationFields ? ['uid'] : ['*'];
 
 										$queryResult = $queryBuilder
 											->select(...$fields)
-											->from($foreignTable)
-											->where(
-												$this->createLanguageContraints($queryBuilder, $selectUids, $foreignTable, $currentLanguageUid)
-											)
-											->execute();
+											->from($foreignTable)->where($this->createLanguageContraints($queryBuilder, $selectUids, $foreignTable, $currentLanguageUid))->executeQuery();
 										while ($foreignRow = $queryResult->fetch()) {
 											$sortUid = array_search($foreignRow['uid'], $selectUids);
 											$foreignItems[$sortUid] = &$this->buildArrayByRow($foreignRow, $foreignTable, $maxDepth - 1);
@@ -671,15 +659,15 @@ class ReflectionService
 		return $this->elementStorage[$table][$uid];
 	}
 
-	private function collectUnloadedElements()
+	private function collectUnloadedElements(): void
 	{
 		$this->loadUnloadedRelationItems();
 		$this->loadUnloadedChildItems();
 	}
 
-	private function loadUnloadedChildItems()
+	private function loadUnloadedChildItems(): void
 	{
-		$connectionPool = GeneralUtility::makeInstance(ConnectionPool::class);
+		$connectionPool = $this->connectionPool;
 
 		foreach ($this->unloadedRelatedChildren as $languageUid => $tables) {
 			foreach ($tables as $table => $foreignFields) {
@@ -704,9 +692,9 @@ class ReflectionService
 								$query->orderBy($foreignSorting);
 							}
 
-							$queryResult = $query->execute();
+							$queryResult = $query->executeQuery();
 
-							while ($row = $queryResult->fetch()) {
+							while ($row = $queryResult->fetchAssociative()) {
 								$groups[$row[$foreignField]][] = $this->buildArrayByRow($row, $table, 8, false);
 							}
 						}
@@ -717,10 +705,10 @@ class ReflectionService
 					}
 
 					unset($this->unloadedRelatedChildren[$languageUid][$table][$foreignField]);
-					if (!count($this->unloadedRelatedChildren[$languageUid][$table])) {
+					if (count($this->unloadedRelatedChildren[$languageUid][$table]) === 0) {
 						unset($this->unloadedRelatedChildren[$languageUid][$table]);
 					}
-					if (!count($this->unloadedRelatedChildren[$languageUid])) {
+					if (count($this->unloadedRelatedChildren[$languageUid]) === 0) {
 						unset($this->unloadedRelatedChildren[$languageUid]);
 					}
 				}
@@ -728,9 +716,9 @@ class ReflectionService
 		}
 	}
 
-	private function loadUnloadedRelationItems()
+	private function loadUnloadedRelationItems(): void
 	{
-		$connectionPool = GeneralUtility::makeInstance(ConnectionPool::class);
+		$connectionPool = $this->connectionPool;
 
 		foreach ($this->unloadedRelatedItems as $table => $languages) {
 
@@ -743,18 +731,14 @@ class ReflectionService
 				$queryBuilder = $connectionPool->getQueryBuilderForTable($table);
 				$queryResult = $queryBuilder
 					->select('*')
-					->from($table)
-					->where(
-						$this->createLanguageContraints($queryBuilder, $ids, $table, $languageUid)
-					)
-					->execute();
+					->from($table)->where($this->createLanguageContraints($queryBuilder, $ids, $table, $languageUid))->executeQuery();
 
 				$rows = [];
 
 				$languageConfig = TcaUtility::getL10nConfig($table);
 				$transOrigPointerField = $languageConfig['transOrigPointerField'] ?? null;								
 
-				while ($row = $queryResult->fetch()) {
+				while ($row = $queryResult->fetchAssociative()) {
 					// case (f.e. at "sys_category"): the relation uses the default language uid, the row returns the uid used by translation
 					// we remap this on both uids in that language
 					if ($languageUid > 0 && $transOrigPointerField && isset($row[$transOrigPointerField]) && !empty($row[$transOrigPointerField]))  {
@@ -765,7 +749,7 @@ class ReflectionService
 				}
 
 				// add to loaded relations
-				if (!key_exists($table, $this->loadedRelatedItems)) {
+				if (!array_key_exists($table, $this->loadedRelatedItems)) {
 					$this->loadedRelatedItems[$table] = [];
 				}
 
@@ -813,14 +797,14 @@ class ReflectionService
 			);
 		} else {
 			// UID Single Mode
-			$uidContstraints[] = $queryBuilder->expr()->eq('uid', $queryBuilder->createNamedParameter((int) $singleUidOrUidList, \PDO::PARAM_INT));
+			$uidContstraints[] = $queryBuilder->expr()->eq('uid', $queryBuilder->createNamedParameter((int) $singleUidOrUidList, Connection::PARAM_INT));
 		}
 
 		$languageConfig = TcaUtility::getL10nConfig($table);
 		if ($languageConfig !== null) {
 			$languageField = $languageConfig['languageField'];
 			$languageParentField = $languageConfig['transOrigPointerField'];
-			$currentLanguageUid = $currentLanguageUid ?? FrontendUtility::getCurrentLanguageId();
+			$currentLanguageUid ??= FrontendUtility::getCurrentLanguageId();
 
 			// just load elements from the current language or which are marked for "all languages (-1)"
 			$languageConstraints[] = $queryBuilder->expr()->eq($languageField, $currentLanguageUid);
@@ -837,7 +821,7 @@ class ReflectionService
 				);
 			} else {
 				// UID Single Mode
-				$uidContstraints[] = $queryBuilder->expr()->eq($languageParentField, $queryBuilder->createNamedParameter((int) $singleUidOrUidList, \PDO::PARAM_INT));
+				$uidContstraints[] = $queryBuilder->expr()->eq($languageParentField, $queryBuilder->createNamedParameter((int) $singleUidOrUidList, Connection::PARAM_INT));
 			}
 		}
 
@@ -846,14 +830,7 @@ class ReflectionService
 			DebuggerUtility::var_dump($languageConstraints, 'Language Contraints for ' . $table);
 		}
 
-		return $queryBuilder->expr()->andX(
-			$queryBuilder->expr()->orX(
-				...$uidContstraints
-			),
-			$queryBuilder->expr()->orX(
-				...$languageConstraints
-			)
-		);
+		return $queryBuilder->expr()->and($queryBuilder->expr()->or(...$uidContstraints), $queryBuilder->expr()->or(...$languageConstraints));
 	}
 
 	/**
@@ -862,7 +839,7 @@ class ReflectionService
 	 */
 	private function createTableStorageIfNotExist(string $table): void
 	{
-		if (!key_exists($table, $this->elementStorage)) {
+		if (!array_key_exists($table, $this->elementStorage)) {
 			$this->elementStorage[$table] = [];
 		}
 	}
@@ -875,7 +852,7 @@ class ReflectionService
 	private function isInStorage(string $table, int $uid): bool
 	{
 		$this->createTableStorageIfNotExist($table);
-		return key_exists($uid, $this->elementStorage[$table]);
+		return array_key_exists($uid, $this->elementStorage[$table]);
 	}
 
 
@@ -899,17 +876,17 @@ class ReflectionService
 	public function setPropertiesByConfigurationArray(array $configuration): self
 	{
 		$tableColumnBlacklist = $this->convertProcessorConfigurationStringListToArray($configuration, 'tableColumnBlacklist');
-		if (!empty($tableColumnBlacklist)) {
+		if ($tableColumnBlacklist !== []) {
 			$this->addToTableColumnBlacklist($tableColumnBlacklist);
 		}
 
 		$tableColumnWhitelist = $this->convertProcessorConfigurationStringListToArray($configuration, 'tableColumnWhitelist');
-		if (!empty($tableColumnWhitelist)) {
+		if ($tableColumnWhitelist !== []) {
 			$this->setTableColumnWhitelist($tableColumnWhitelist);
 		}
 
 		$tableColumnRemoveablePrefixes = $this->convertProcessorConfigurationStringListToArray($configuration, 'tableColumnRemoveablePrefixes');
-		if (!empty($tableColumnRemoveablePrefixes)) {
+		if ($tableColumnRemoveablePrefixes !== []) {
 			$this->setTableColumnRemoveablePrefixes($tableColumnRemoveablePrefixes);
 		}
 

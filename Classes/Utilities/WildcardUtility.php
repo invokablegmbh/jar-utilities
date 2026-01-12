@@ -74,11 +74,11 @@ class WildcardUtility
 			return fnmatch($pattern, $string, $flags);
 		}
 
-		$pattern = static::createRegexPattern($pattern, $flags);
+		$pattern = self::createRegexPattern($pattern, $flags);
 
 		// Period at start must be the same as pattern:
-		if ($flags & FNM_PERIOD) {
-			if (strpos($string, '.') === 0 && strpos($pattern, '.') !== 0) return false;
+		if (($flags & FNM_PERIOD) !== 0 && (str_starts_with($string, '.') && !str_starts_with($pattern, '.'))) {
+			return false;
 		}
 
 		return (bool)preg_match($pattern, $string);
@@ -94,7 +94,7 @@ class WildcardUtility
 	private static function createRegexPattern(string $wildcardPattern, int $flags = 0): string
 	{
 		$modifiers = null;
-		$transforms = array(
+		$transforms = [
 			'\*'    => '.*',
 			'\?'    => '.',
 			'\[\!'    => '[^',
@@ -102,20 +102,20 @@ class WildcardUtility
 			'\]'    => ']',
 			'\.'    => '\.',
 			'\\'    => '\\\\'
-		);
+		];
 
 		// Forward slash in string must be in pattern:
-		if ($flags & FNM_PATHNAME) {
+		if (($flags & FNM_PATHNAME) !== 0) {
 			$transforms['\*'] = '[^/]*';
 		}
 
 		// Back slash should not be escaped:
-		if ($flags & FNM_NOESCAPE) {
+		if (($flags & FNM_NOESCAPE) !== 0) {
 			unset($transforms['\\']);
 		}
 
 		// Perform case insensitive match:
-		if ($flags & FNM_CASEFOLD) {
+		if (($flags & FNM_CASEFOLD) !== 0) {
 			$modifiers .= 'i';
 		}
 

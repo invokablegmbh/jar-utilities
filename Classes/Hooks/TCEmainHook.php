@@ -32,7 +32,6 @@ use TYPO3\CMS\Core\Information\Typo3Version;
 
 class TCEmainHook implements SingletonInterface
 {
-    protected ConnectionPool $connectionPool;
     protected array $updatedItemsBuffer = [];
     protected array $reverseRelationTca = [];
     // when bad things happen, this will prevent an endless loop
@@ -42,9 +41,8 @@ class TCEmainHook implements SingletonInterface
      * @param ConnectionPool $connectionPool 
      * @return void 
      */
-    public function __construct(ConnectionPool $connectionPool)
+    public function __construct(protected ConnectionPool $connectionPool)
     {
-        $this->connectionPool = $connectionPool;
         $this->initReverseRelationTca();
         //$this->testRelations();
     }
@@ -129,12 +127,12 @@ class TCEmainHook implements SingletonInterface
      * @throws TooDirtyException 
      * @throws ReflectionException 
      */
-    public function processDatamap_afterDatabaseOperations(string $status, string $table, string $id, array $fieldArray, \TYPO3\CMS\Core\DataHandling\DataHandler &$pObj)
+    public function processDatamap_afterDatabaseOperations(string $status, string $table, string $id, array $fieldArray, DataHandler &$pObj): void
     {
 
         $id = (int) $id;
         // General Update when DB Queries are performed (Update Parent when Inline Elements also Change - triggers Rebuild of their output Cache)
-        if ($status == 'update') {
+        if ($status === 'update') {
             $this->updateParents($table, [$id]);
         }
     }
@@ -173,25 +171,20 @@ class TCEmainHook implements SingletonInterface
 
                 // foreign table relations
                 if (array_key_exists('foreign_table', $tcaConfig) && array_key_exists('foreign_field', $tcaConfig)) {
-
                     $foreignConditions = [
                         $queryBuilder->expr()->in('ft.uid', $queryBuilder->createNamedParameter($uidChunk, Connection::PARAM_INT_ARRAY))
                     ];
-
                     if (array_key_exists('foreign_match_fields', $tcaConfig)) {
                         foreach ($tcaConfig['foreign_match_fields'] as $column => $value) {
-                            $foreignConditions[] = $queryBuilder->expr()->eq('ft.' . $column, $queryBuilder->createNamedParameter($value, \PDO::PARAM_STR));
+                            $foreignConditions[] = $queryBuilder->expr()->eq('ft.' . $column, $queryBuilder->createNamedParameter($value, Connection::PARAM_STR));
                         }
                     }
-
                     if (array_key_exists('foreign_table_field', $tcaConfig)) {
-                        $foreignConditions[] = $queryBuilder->expr()->eq('ft.' . $tcaConfig['foreign_table_field'], $queryBuilder->createNamedParameter($reverseRelation['table'], \PDO::PARAM_STR));
+                        $foreignConditions[] = $queryBuilder->expr()->eq('ft.' . $tcaConfig['foreign_table_field'], $queryBuilder->createNamedParameter($reverseRelation['table'], Connection::PARAM_STR));
                     }
-
                     if (array_key_exists('foreign_selector', $tcaConfig)) {
                         $foreignConditions[] = $queryBuilder->expr()->eq('ft.' . $tcaConfig['foreign_selector'], $queryBuilder->quoteIdentifier($reverseRelation['table'] . '.uid'));
                     }
-
                     // get parent elements    
                     $parentElements = $queryBuilder
                         ->select($reverseRelation['table'] . '.uid')
@@ -203,30 +196,23 @@ class TCEmainHook implements SingletonInterface
                             $queryBuilder->expr()->eq('ft.' . $tcaConfig['foreign_field'], $queryBuilder->quoteIdentifier($reverseRelation['table'] . '.uid'))
                         )
                         ->where(
-                            $queryBuilder->expr()->andX(
-                                ...$foreignConditions
-                            )
+                            $queryBuilder->expr()->and(...$foreignConditions)
                     );
                     if ((GeneralUtility::makeInstance(Typo3Version::class))->getMajorVersion() < 11) {
                         $parentElements = $queryBuilder->execute()
                         ->fetchAllAssociative();
                     } else {
                         $parentElements = $queryBuilder->executeQuery()
-                        ->fetchAll();
+                        ->fetchAllAssociative();
                     }
-                }
-
-                // Resolve Basic mm relations
-                else if (isset($tcaConfig['MM']) && !empty($tcaConfig['MM']) && !array_key_exists('MM_opposite_field', $tcaConfig) && !array_key_exists('MM_hasUidField', $tcaConfig) && !array_key_exists('MM_match_fields', $tcaConfig)) {
+                } elseif (isset($tcaConfig['MM']) && !empty($tcaConfig['MM']) && !array_key_exists('MM_opposite_field', $tcaConfig) && !array_key_exists('MM_hasUidField', $tcaConfig) && !array_key_exists('MM_match_fields', $tcaConfig)) {
                     // get parent elements from mm table
                     // we keep it simple, just use that for simple mm relations check if mm table has 'uid_local' and 'uid_foreign' fields                    
                     // TODO: Handle $tcaConfig['MM_match_fields']
-
                     $mmTableColumns = $this->connectionPool->getConnectionForTable($tcaConfig['MM'])->getSchemaManager()->listTableColumns($tcaConfig['MM']);
                     if (!array_key_exists('uid_local', $mmTableColumns) || !array_key_exists('uid_foreign', $mmTableColumns)) {
                         continue;
                     }
-
                     // get parent elements                    
                     $parentElements = $queryBuilder
                         ->select($reverseRelation['table'] . '.uid')
@@ -245,18 +231,13 @@ class TCEmainHook implements SingletonInterface
                         ->fetchAllAssociative();
                     } else {
                         $parentElements = $queryBuilder->executeQuery()
-                        ->fetchAll();
-                    }   
-                }
-
-                // resolve simple foreign relations // resolve simple group relations // basic selects without mm relations
-                else if (array_key_exists('foreign_table', $tcaConfig) || $reverseRelation['tcaconfig']['type'] === 'group' || $reverseRelation['tcaconfig']['type'] === 'select') {
-
+                        ->fetchAllAssociative();
+                    }
+                } elseif (array_key_exists('foreign_table', $tcaConfig) || $reverseRelation['tcaconfig']['type'] === 'group' || $reverseRelation['tcaconfig']['type'] === 'select') {
                     $wheres = [];
                     foreach ($uidChunk as $uid) {
-                        $wheres[] = $queryBuilder->expr()->inSet($reverseRelation['field'], $queryBuilder->createNamedParameter($uid, \PDO::PARAM_INT));
+                        $wheres[] = $queryBuilder->expr()->inSet($reverseRelation['field'], $queryBuilder->createNamedParameter($uid, Connection::PARAM_INT));
                     }
-
                     // get parent elements
                     $parentElements = $queryBuilder
                         ->select($reverseRelation['table'] . '.uid')
@@ -269,13 +250,13 @@ class TCEmainHook implements SingletonInterface
                         ->fetchAllAssociative();
                     } else {
                         $parentElements = $queryBuilder->executeQuery()
-                        ->fetchAll();
-                    } 
+                        ->fetchAllAssociative();
+                    }
                 }
 
                 // update timestamps
                 $parentUids = IteratorUtility::pluck($parentElements, 'uid');
-                if (!empty($parentUids)) {
+                if ($parentUids !== []) {
                     $queryBuilder
                         ->update($reverseRelation['table'])
                         ->where(
@@ -308,7 +289,7 @@ class TCEmainHook implements SingletonInterface
      * Tester method for unhandled types of relations
      */
 
-    public function testRelations()
+    public function testRelations(): void
     {
         foreach ($this->reverseRelationTca as $table => $relations) {
             foreach ($relations['parentRelations'] as $relation) {

@@ -53,7 +53,7 @@ class StringUtility
 		$string = str_replace("\r", '', $string);
 		$string = str_replace("\n", ' ', $string);
 		$string = str_replace("\t", ' ', $string);
-		$string = trim(preg_replace('/ {2,}/', ' ', $string));
+		$string = trim((string) preg_replace('/ {2,}/', ' ', $string));
 		return $string;
 	}
 
@@ -72,8 +72,8 @@ class StringUtility
 		}
 		$pattern = '/([^a-z0-9]){1,}/i';
 		$replaced = preg_replace($pattern, '_', $string);
-		$replaced = trim($replaced, '_');
-		return empty($replaced) ? md5($string) : $replaced;
+		$replaced = trim((string) $replaced, '_');
+		return $replaced === '' || $replaced === '0' ? md5($string) : $replaced;
 	}
 
 	/**
@@ -157,6 +157,6 @@ class StringUtility
 		}
 		$pattern = '/([^A-Za-z0-9]){1,}/';
 		$string = preg_replace($pattern, '_', $string);
-		return trim($string, '_');
+		return trim((string) $string, '_');
 	}
 }

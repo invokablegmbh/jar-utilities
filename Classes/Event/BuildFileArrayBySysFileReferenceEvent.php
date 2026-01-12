@@ -10,7 +10,7 @@ final class BuildFileArrayBySysFileReferenceEvent
 {
     public function __construct(
         private array $data,
-        private File $file,
+        private readonly File $file,
     )
     {
     }

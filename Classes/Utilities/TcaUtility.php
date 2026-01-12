@@ -9,7 +9,6 @@ use Jar\Utilities\Evaluators\FormData\DisplayConditionEvaluator;
 use Jar\Utilities\Services\RegistryService;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\ArrayUtility;
-use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 
 /*
  * This file is part of the JAR/Utilities project under GPLv2 or later.
@@ -90,11 +89,7 @@ class TcaUtility
 		$typeField = self::getTypeFieldOfTable($table);
 
 		// use type when defined, otherwise use the first used type
-		if ($typeField !== null) {
-			$type = $row[$typeField];
-		} else {
-			$type = reset(array_keys($tca[$table]['types']));
-		}
+		$type = $typeField !== null ? $row[$typeField] : reset(array_keys($tca[$table]['types']));
 
 		return (string) $type;
 	}
@@ -124,10 +119,8 @@ class TcaUtility
 			}
 
 			// check exclude
-			if ($definition['exclude'] ?? false) {
-				if (empty($GLOBALS['BE_USER']) || !$GLOBALS['BE_USER']->isAdmin()) {
-					continue;
-				}
+			if (($definition['exclude'] ?? false) && (empty($GLOBALS['BE_USER']) || !$GLOBALS['BE_USER']->isAdmin())) {
+				continue;
 			}
 
 			// check displayCond
@@ -177,7 +170,7 @@ class TcaUtility
 	 */
 	public static function getLabelFromRow(array $row, string $table): ?string
 	{
-		return htmlspecialchars($row[static::getLabelFieldOfTable($table)]);
+		return htmlspecialchars((string) $row[static::getLabelFieldOfTable($table)]);
 	}
 
 
@@ -198,8 +191,8 @@ class TcaUtility
 		$columns = GeneralUtility::trimExplode(',', $list);
 		foreach ($columns as $column) {
 			// handle palette sub-columns
-			if (strpos($column, '--palette--;') === 0) {
-				$palette = $tca[$table]['palettes'][end(GeneralUtility::trimExplode(';', $column, 3))];
+			if (str_starts_with($column, '--palette--;')) {
+				$palette = $tca[$table]['palettes'][end(GeneralUtility::trimExplode(';', $column, false, 3))];
 				if (!empty($palette)) {
 					foreach (self::mapStringListToColumns($palette['showitem'], $table, $extendedList) as $paletteColumn) {
 						$result[] = $paletteColumn;
@@ -208,7 +201,7 @@ class TcaUtility
 				continue;
 			}
 			// Delete all other UI Items like --div-- or empty ones
-			if (empty($column) || strpos($column, '--') === 0) {
+			if (empty($column) || str_starts_with($column, '--')) {
 				continue;
 			}
 			if (!$extendedList) {
@@ -240,7 +233,7 @@ class TcaUtility
 			return null;
 		}
 
-		if (!empty($type)) {
+		if (!in_array($type, [null, '', '0'], true)) {
 			// column overrides
 			ArrayUtility::mergeRecursiveWithOverrule($definition, $tca[$table]['types'][$type]['columnsOverrides'][$column] ?? []);
 

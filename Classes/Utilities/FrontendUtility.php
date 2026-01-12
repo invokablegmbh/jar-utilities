@@ -28,7 +28,7 @@ class FrontendUtility
 	 */
 	public static function getCurrentPageUid(): int
 	{
-		return (int) $GLOBALS['TSFE']->id;
+		return (int) $GLOBALS['TYPO3_REQUEST']->getAttribute('frontend.page.information')->getId();
 	}
 
 

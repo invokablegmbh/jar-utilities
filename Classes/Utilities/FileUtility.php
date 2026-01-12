@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Jar\Utilities\Utilities;
 
+use TYPO3\CMS\Core\Resource\ResourceFactory;
 use InvalidArgumentException;
 use Jar\Utilities\Event\BuildFileArrayBySysFileReferenceEvent;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -18,8 +19,6 @@ use TYPO3\CMS\Core\Resource\ProcessedFile;
 use TYPO3\CMS\Core\Utility\ArrayUtility;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Core\Utility\PathUtility;
-use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 use UnexpectedValueException;
 
 /*
@@ -53,10 +52,10 @@ class FileUtility
 	 */
 	public static function getFileReferenceByUid(int $uid): ?FileReference
 	{
-		$fileRepository = GeneralUtility::makeInstance(FileRepository::class);
+		$resourceFactory = GeneralUtility::makeInstance(ResourceFactory::class);
 		try {
-			$fileReference = $fileRepository->findFileReferenceByUid($uid);
-		} catch(ResourceDoesNotExistException $e) {
+			$fileReference = $resourceFactory->getFileReferenceObject($uid);
+		} catch(ResourceDoesNotExistException) {
 			return null;
 		}
 
@@ -99,7 +98,7 @@ class FileUtility
 	public static function buildFileArrayBySysFileReference(?FileReference $fileReference, ?array $configuration = []): ?array
 	{
 
-		if ($fileReference === null || $fileReference->isMissing()) {
+		if (!$fileReference instanceof FileReference || $fileReference->isMissing()) {
 			return null;
 		}
 
@@ -116,7 +115,7 @@ class FileUtility
 
 		$url = $fileReference->getPublicUrl();
 
-		$result = array(
+		$result = [
 			'uid' => $fileReference->getUid(),
 			'url' =>  $url,
 			'alt' => $fileReference->getAlternative(),
@@ -124,7 +123,7 @@ class FileUtility
 			'description' => $fileReference->getDescription(),
 			'link' => FormatUtility::buildLinkArray($fileReference->getLink()),
 			'originalUrl' => $url,
-		);
+		];
 
 		$file = $fileReference->getOriginalFile();
 
@@ -144,7 +143,7 @@ class FileUtility
 		if ($file->isImage()) {
 
 			// part for creating cropped image urls TYPO3\CMS\Core\Imaging\ImageManipulation\Area
-			if(!empty($setup['tcaCropVariants']) && $fileReference->hasProperty('crop')) {
+			if(isset($setup['tcaCropVariants']) && $setup['tcaCropVariants'] !== [] && $fileReference->hasProperty('crop')) {
 
 				$cropVariantCollection = CropVariantCollection::create((string) $fileReference->getProperty('crop'));
 				$cropped = $focusArea = [];
@@ -167,7 +166,7 @@ class FileUtility
 					}
 
 					$focusAreaVariant = $cropVariantCollection->getFocusArea($cropName)->asArray();
-					if($focusAreaVariant) {
+					if($focusAreaVariant !== []) {
 						$focusArea[$cropName] = $focusAreaVariant;
 					}
 				}
@@ -217,11 +216,11 @@ class FileUtility
 	 */
 	public static function getFileByPath(string $path): ?File {
 
-		$resourceFactory = GeneralUtility::makeInstance(\TYPO3\CMS\Core\Resource\ResourceFactory::class);
+		$resourceFactory = GeneralUtility::makeInstance(ResourceFactory::class);
 
 		try {
 			$file = $resourceFactory->retrieveFileOrFolderObject($path);
-		} catch (\TYPO3\CMS\Core\Resource\Exception\ResourceDoesNotExistException $e) {
+		} catch (ResourceDoesNotExistException) {
 			$file = null;
 		}
 
@@ -230,10 +229,10 @@ class FileUtility
 
 
 	/**
-	 * @param TYPO3\CMS\Core\Resource\FileReference $fileReference The file reference
-	 * @return bool
-	 */
-	public static function isFileReferenceIsAnimatedGif(FileReference $fileReference): bool {
+     * @param FileReference $fileReference The file reference
+     * @return bool
+     */
+    public static function isFileReferenceIsAnimatedGif(FileReference $fileReference): bool {
 		if($fileReference->isMissing() || $fileReference->getExtension() !== 'gif') {
 			return false;
 		}
@@ -278,11 +277,11 @@ class FileUtility
 	 */
 	public static function buildFileArrayByFile(?File $file, ?array $configuration = []): ?array
 	{
-		if(empty($file)) {
+		if(!$file instanceof File) {
 			return null;
 		}
 
-		$resourceFactory = GeneralUtility::makeInstance(\TYPO3\CMS\Core\Resource\ResourceFactory::class);
+		$resourceFactory = GeneralUtility::makeInstance(ResourceFactory::class);
 		$fileReference = $resourceFactory->createFileReferenceObject(
 			[
 				'uid_local' => $file->getUid(),
@@ -331,8 +330,8 @@ class FileUtility
 	 */
 	public static function humanFilesize(int $bytes, int $decimals = 2): string
 	{
-		$size = array('B', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB');
+		$size = ['B', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
 		$factor = floor((strlen((string) $bytes) - 1) / 3);
-		return sprintf("%.{$decimals}f", $bytes / pow(1024, $factor)) . ' ' . @$size[$factor];
+		return sprintf("%.{$decimals}f", $bytes / 1024 ** $factor) . ' ' . @$size[$factor];
 	}
 }

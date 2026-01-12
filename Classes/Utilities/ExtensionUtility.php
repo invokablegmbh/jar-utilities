@@ -70,7 +70,7 @@ class ExtensionUtility
 	 */
 	protected static function getExtensionKey(string $qualifiedExtensionName): string
 	{
-		list(, $extensionKey) = static::getVendorNameAndExtensionKey($qualifiedExtensionName);
+		[, $extensionKey] = static::getVendorNameAndExtensionKey($qualifiedExtensionName);
 		return $extensionKey;
 	}
 
@@ -85,8 +85,8 @@ class ExtensionUtility
 		if (isset($cache[$qualifiedExtensionName])) {
 			return $cache[$qualifiedExtensionName];
 		}
-		if (true === static::hasVendorName($qualifiedExtensionName)) {
-			list($vendorName, $extensionKey) = GeneralUtility::trimExplode('.', $qualifiedExtensionName);
+		if (static::hasVendorName($qualifiedExtensionName)) {
+			[$vendorName, $extensionKey] = GeneralUtility::trimExplode('.', $qualifiedExtensionName);
 		} else {
 			$vendorName = null;
 			$extensionKey = $qualifiedExtensionName;
@@ -103,7 +103,7 @@ class ExtensionUtility
 	 */
 	protected static function hasVendorName(string $qualifiedExtensionName): bool
 	{
-		return false !== strpos($qualifiedExtensionName, '.');
+		return str_contains($qualifiedExtensionName, '.');
 	}
 
 	/**
@@ -118,7 +118,7 @@ class ExtensionUtility
 	public static function getExtensionVersion(string $extkey): string
 	{
 		$result = strtolower(ExtensionManagementUtility::getExtensionVersion($extkey));
-		if(strpos($result, 'v') === 0) {
+		if(str_starts_with($result, 'v')) {
 			$result = substr($result, 1);
 		}
 		return $result;

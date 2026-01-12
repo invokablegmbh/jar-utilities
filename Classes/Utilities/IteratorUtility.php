@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Jar\Utilities\Utilities;
 
-use Closure;
-
 /*
  * This file is part of the JAR/Utilities project under GPLv2 or later.
  *
@@ -32,7 +30,7 @@ class IteratorUtility
      */
     public static function sortArrayByColumn(array &$arr, string $col, int $dir = SORT_ASC): void
     {
-        $sort_col = array();
+        $sort_col = [];
         foreach ($arr as $key => $row) {
             $sort_col[$key] = $row[$col];
         }
@@ -49,11 +47,11 @@ class IteratorUtility
      */
     public static function extractValuesViaGetMethod(array $listOfObjects, string $methodName): array
     {
-        if (empty($listOfObjects)) {
+        if ($listOfObjects === []) {
             return [];
         }
 
-        $result = array();
+        $result = [];
         $method = 'get' . ucfirst($methodName);
         foreach ($listOfObjects as $o) {
             if (method_exists($o, $method)) {
@@ -229,9 +227,7 @@ class IteratorUtility
      */
     public static function whitelistList(array $array, array $whitelist): array
     {
-        return static::map($array, function ($a) use ($whitelist) {
-            return static::whitelist($a, $whitelist);
-        });
+        return static::map($array, fn($a) => static::whitelist($a, $whitelist));
     }
 
 

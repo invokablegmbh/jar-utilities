@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace Jar\Utilities\DataProcessing;
 
-use Jar\Utilities\Services\ReflectionService;
 use Jar\Utilities\Utilities\LocalizationUtility;
 use Jar\Utilities\Utilities\TypoScriptUtility;
 use TYPO3\CMS\Core\Utility\ArrayUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 use TYPO3\CMS\Frontend\ContentObject\DataProcessorInterface;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 
@@ -57,11 +55,11 @@ class LocalizationProcessor implements DataProcessorInterface
 
         if (!empty($processorConfiguration['extensionsToLoad'])) {
             $extensionsToLoad = GeneralUtility::trimExplode(',', $processorConfiguration['extensionsToLoad']);
-            if (!empty($extensionsToLoad)) {
+            if ($extensionsToLoad !== []) {
                 $localizationUtility = GeneralUtility::makeInstance(LocalizationUtility::class);
                 foreach ($extensionsToLoad as $extension) {
                     //if flat = 1, all translations will be merged into one big list, otherwise they will be grouped by extension
-                    if(isset($processorConfiguration['flat']) && !!$processorConfiguration['flat']) {
+                    if(isset($processorConfiguration['flat']) && (bool) $processorConfiguration['flat']) {
                         ArrayUtility::mergeRecursiveWithOverrule($result, $localizationUtility->loadTyposcriptTranslations($extension));
                     } else {
                         $result[$extension] = $localizationUtility->loadTyposcriptTranslations($extension);

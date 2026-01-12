@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Jar\Utilities\Utilities;
 
-use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
-
 /*
  * This file is part of the JAR/Utilities project under GPLv2 or later.
  *
@@ -33,10 +31,11 @@ class NumberUtility
 		$val = str_replace('-', '', $val);
 
 		if (ctype_digit($val)) {
-			if ($val === (string)0)
-				return true;
-			elseif (ltrim($val, '0') == $val)
-				return true;
+			if ($val === (string)0) {
+                return true;
+            } elseif (ltrim($val, '0') === $val) {
+                return true;
+            }
 		}
 
 		return false;

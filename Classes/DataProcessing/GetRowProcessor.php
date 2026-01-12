@@ -4,14 +4,10 @@ declare(strict_types=1);
 
 namespace Jar\Utilities\DataProcessing;
 
-use Jar\Utilities\Services\ReflectionService;
 use Jar\Utilities\Utilities\DataUtility;
-use Jar\Utilities\Utilities\FormatUtility;
-use Jar\Utilities\Utilities\StringUtility;
 use Jar\Utilities\Utilities\TypoScriptUtility;
 use TYPO3\CMS\Core\Utility\ArrayUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 use TYPO3\CMS\Frontend\ContentObject\ContentDataProcessor;
 use TYPO3\CMS\Frontend\ContentObject\DataProcessorInterface;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
@@ -47,7 +43,7 @@ class GetRowProcessor implements DataProcessorInterface
         $populatedProcessorConfiguration = TypoScriptUtility::populateTypoScriptConfiguration($processorConfiguration, $cObj);
 
         $result = [];
-        if(!empty($table = $populatedProcessorConfiguration['table']) && !empty($uid = (int) $populatedProcessorConfiguration['uid'])) {
+        if(!empty($table = $populatedProcessorConfiguration['table']) && ($uid = (int) $populatedProcessorConfiguration['uid']) !== 0) {
             $result = DataUtility::getRow($table, $uid);
             
             // handle nested dataprocessors

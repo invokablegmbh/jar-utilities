@@ -2,10 +2,11 @@ services:
    _defaults:
       autowire: true
       autoconfigure: true
-      public: false
+      public: true
 
    Jar\Utilities\:
       resource: '../Classes/*'
+      exclude: '../Classes/Event/*'
   
    Jar\Utilities\Hooks\TCEmainHook:
       public: true

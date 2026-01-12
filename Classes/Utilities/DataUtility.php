@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Jar\Utilities\Utilities;
 
+use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
@@ -35,14 +36,9 @@ class DataUtility
 		$queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable($table);
 		return $queryBuilder
 			->select('*')
-			->from($table)
-			->where(
-				$queryBuilder->expr()->eq(
+			->from($table)->where($queryBuilder->expr()->eq(
 					'uid',
-					$queryBuilder->createNamedParameter($uid, \PDO::PARAM_INT)
-				),
-			)
-			->execute()
-			->fetch();
+					$queryBuilder->createNamedParameter($uid, Connection::PARAM_INT)
+				))->executeQuery()->fetchAssociative();
 	}
 }

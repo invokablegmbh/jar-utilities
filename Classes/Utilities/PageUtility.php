@@ -62,11 +62,7 @@ class PageUtility
         if ($id < 0) {
             $id = abs($id);
         }
-        if ($begin == 0) {
-            $theList = (string)$id;
-        } else {
-            $theList = '';
-        }
+        $theList = $begin === 0 ? (string)$id : '';
         if ($id && $depth > 0) {
             $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('pages');
             $queryBuilder->getRestrictions()->removeAll()->add(GeneralUtility::makeInstance(DeletedRestriction::class));
@@ -87,7 +83,7 @@ class PageUtility
                 }
                 if ($depth > 1) {
                     $theSubList = static::getTreeList($row['uid'], $depth - 1, $begin - 1, $permClause);
-                    if (!empty($theList) && !empty($theSubList) && ($theSubList[0] !== ',')) {
+                    if ($theList !== '' && $theList !== '0' && !empty($theSubList) && ($theSubList[0] !== ',')) {
                         $theList .= ',';
                     }
                     $theList .= $theSubList;
@@ -105,6 +101,6 @@ class PageUtility
      */
     public static function getPageFieldSlided(string $fieldname): ?string
     {
-        return reset(IteratorUtility::compact(IteratorUtility::pluck($GLOBALS['TSFE']->rootLine, $fieldname)));
+        return reset(IteratorUtility::compact(IteratorUtility::pluck($GLOBALS['TYPO3_REQUEST']->getAttribute('frontend.page.information')->getRootLine(), $fieldname)));
     }
 }
