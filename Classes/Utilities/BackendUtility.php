@@ -39,7 +39,7 @@ class BackendUtility
 	 */
 	public static function createFrontendLink(int $pageUid = 1, array $params = []): string
 	{
-		if (empty($GLOBALS['TSFE'])) {
+		if (!ApplicationType::fromRequest($GLOBALS['TYPO3_REQUEST'])->isFrontend()) {
 			$finder = GeneralUtility::makeInstance(SiteFinder::class);
 			$site = $finder->getSiteByPageId($pageUid);
 			$router = $site->getRouter();
@@ -50,7 +50,7 @@ class BackendUtility
 		$linkConf = [
 			'parameter' => $pageUid,
 			'forceAbsoluteUrl' => 0,
-			'additionalParams' => GeneralUtility::implodeArrayForUrl(NULL, $params),
+			'additionalParams' => GeneralUtility::implodeArrayForUrl('', $params),
 			'linkAccessRestrictedPages' => 1
 		];
 
@@ -91,7 +91,7 @@ class BackendUtility
 				}
 			}
 
-			if (isset($GLOBALS['TSFE'])) {
+			if (ApplicationType::fromRequest($GLOBALS['TYPO3_REQUEST'])->isFrontend()) {
 				return (int) $request->getAttribute('frontend.page.information')->getId();
 			}
 		}

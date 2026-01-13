@@ -98,7 +98,7 @@ class ReflectionService
 	 * Flag for Debug Mode
 	 * @var bool
 	 */
-	private bool $debug = false;
+	private bool $debugFlag = false;
 
 	/**
 	 * Remap Columnnames in reflected result.
@@ -279,7 +279,7 @@ class ReflectionService
 	 */
 	public function &buildArrayByRow(array $row, string $table, int $maxDepth = 8, bool $resolveRelations = true): ?array
 	{
-		if ($this->debug) {
+		if ($this->debugFlag) {
 			DebuggerUtility::var_dump($row, 'Reflection Service buildArrayByRow IN ' . $table);
 		}
 
@@ -825,7 +825,7 @@ class ReflectionService
 			}
 		}
 
-		if ($this->debug) {
+		if ($this->debugFlag) {
 			DebuggerUtility::var_dump($uidContstraints, 'UID Contraints for ' . $table);
 			DebuggerUtility::var_dump($languageConstraints, 'Language Contraints for ' . $table);
 		}
@@ -1112,7 +1112,7 @@ class ReflectionService
 	 */
 	public function getDebug()
 	{
-		return $this->debug;
+		return $this->debugFlag;
 	}
 
 	/**
@@ -1124,7 +1124,7 @@ class ReflectionService
 	 */
 	public function setDebug(bool $debug)
 	{
-		$this->debug = $debug;
+		$this->debugFlag = $debug;
 
 		return $this;
 	}

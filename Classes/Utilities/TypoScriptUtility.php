@@ -48,7 +48,7 @@ class TypoScriptUtility
 		$cachePage = $pageUid ?? BackendUtility::currentPageUid();
 		$hash = $path . '_' . ((int)$cachePage) . '_' . $populated;
 		if (($ts_array = $cache->get('ts', $hash)) === false) {
-			if (isset($GLOBALS['TSFE']) && $pageUid === null && (($GLOBALS['TYPO3_REQUEST'] ?? null) instanceof ServerRequestInterface
+			if ($pageUid === null && (($GLOBALS['TYPO3_REQUEST'] ?? null) instanceof ServerRequestInterface
 			&& ApplicationType::fromRequest($GLOBALS['TYPO3_REQUEST'])->isFrontend()
 		)) {
 				$setup = $GLOBALS['TYPO3_REQUEST']->getAttribute('frontend.typoscript')->getSetupArray();
@@ -208,14 +208,6 @@ class TypoScriptUtility
 			$cObj = GeneralUtility::makeInstance(ContentObjectRenderer::class);
 		}
 
-		if (GeneralUtility::makeInstance(Typo3Version::class)->getMajorVersion() < 12) {			
-			$availableCObjects = array_keys($GLOBALS['TYPO3_CONF_VARS']['FE']['ContentObjects']);
-		} else {
-			// not used in TYPO3 12 anymore
-			$availableCObjects = [];
-		}
-		
-
 		// f.e. flat typoScript Objects with "_typoScriptNodeValue"
 		$isFlatCObject = (is_array($conf) && array_key_exists('_typoScriptNodeValue', $conf) && in_array($conf['_typoScriptNodeValue'], $availableCObjects));
 
@@ -241,9 +233,7 @@ class TypoScriptUtility
 			$potentialCObjectParentKey = substr((string) $key, 0, -1);
 			if($isSubConfiguration && array_key_exists($potentialCObjectParentKey, $conf) && is_string($conf[$potentialCObjectParentKey])) {
 				$potentialCObjectName = trim($conf[$potentialCObjectParentKey]);
-				$isCObjectConfiguration = 
-					(GeneralUtility::makeInstance(Typo3Version::class)->getMajorVersion() < 12) ?
-					in_array($potentialCObjectName, $availableCObjects) : ($cObj->getContentObject($potentialCObjectName) !== null);
+				$isCObjectConfiguration = $cObj->getContentObject($potentialCObjectName) !== null;
 			}
 
 			// f.e. "=< lib.content"
