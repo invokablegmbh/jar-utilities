@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Jar\Utilities\Utilities;
 
+use TYPO3\CMS\Core\Http\ApplicationType;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 use InvalidArgumentException;
 use Jar\Utilities\Services\RegistryService;
