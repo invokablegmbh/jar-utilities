@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Jar\Utilities\Utilities;
 
 use InvalidArgumentException;
+use Jar\Utilities\Services\FrontendTypoScriptAccessor;
 use Jar\Utilities\Services\RegistryService;
 use Psr\Http\Message\ServerRequestInterface;
 use TYPO3\CMS\Core\TypoScript\TypoScriptService;
@@ -16,6 +17,7 @@ use TYPO3\CMS\Core\Information\Typo3Version;
 use TYPO3\CMS\Core\TypoScript\FrontendTypoScriptFactory;
 use TYPO3\CMS\Core\Utility\RootlineUtility;
 use TYPO3\CMS\Core\Site\SiteFinder;
+use TYPO3Fluid\Fluid\Core\Parser\SyntaxTree\Expression\TernaryExpressionNode;
 
 /*
  * This file is part of the JAR/Utilities project under GPLv2 or later.
@@ -145,16 +147,22 @@ class TypoScriptUtility
 				->fetchAllAssociative();
 			
 			// Get FrontendTypoScriptFactory from container with all dependencies
-			$container = GeneralUtility::getContainer();
-			$frontendTypoScriptFactory = $container->get(FrontendTypoScriptFactory::class);
-			$frontendTypoScript = $frontendTypoScriptFactory->createSettingsAndSetupConditions(
-				$site,
-				$sysTemplateRows,
-				[], // expressionMatcherVariables
-				null // typoScriptCache
-			);
-			
-			return $frontendTypoScript->getSetupArray();
+			try {
+				$container = GeneralUtility::getContainer();
+				$frontendTypoScriptFactory = $container->get(FrontendTypoScriptFactory::class);
+				$frontendTypoScript = $frontendTypoScriptFactory->createSettingsAndSetupConditions(
+					$site,
+					$sysTemplateRows,
+					[], // expressionMatcherVariables
+					null // typoScriptCache
+				);
+				
+				return $frontendTypoScript->getSetupArray();
+			}
+			catch(\Exception) {
+				$accessor = GeneralUtility::makeInstance(FrontendTypoScriptAccessor::class);
+				return $accessor->buildSetupArray($site, $sysTemplateRows);
+			}
 		} catch (\Exception) {
 			// Fallback to empty array if something goes wrong
 			return [];

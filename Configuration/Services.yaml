@@ -10,3 +10,8 @@ services:
   
    Jar\Utilities\Hooks\TCEmainHook:
       public: true
+
+   Jar\Utilities\Services\FrontendTypoScriptAccessor:
+    public: true
+    autowire: true
+    autoconfigure: true

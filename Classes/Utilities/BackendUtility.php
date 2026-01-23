@@ -93,7 +93,10 @@ class BackendUtility
 			}
 
 			if (ApplicationType::fromRequest($GLOBALS['TYPO3_REQUEST'])->isFrontend()) {
-				return (int) $request->getAttribute('frontend.page.information')->getId();
+				$pageInformation = $request->getAttribute('frontend.page.information');
+				if ($pageInformation !== null) {
+					return (int)$pageInformation->getId();
+				}
 			}
 		}
 		

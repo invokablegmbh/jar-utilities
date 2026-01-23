@@ -209,7 +209,7 @@ class TCEmainHook implements SingletonInterface
                     // get parent elements from mm table
                     // we keep it simple, just use that for simple mm relations check if mm table has 'uid_local' and 'uid_foreign' fields                    
                     // TODO: Handle $tcaConfig['MM_match_fields']
-                    $mmTableColumns = $this->connectionPool->getConnectionForTable($tcaConfig['MM'])->getSchemaManager()->listTableColumns($tcaConfig['MM']);
+                    $mmTableColumns = $this->connectionPool->getConnectionForTable($tcaConfig['MM'])->createSchemaManager()->listTableColumns($tcaConfig['MM']);
                     if (!array_key_exists('uid_local', $mmTableColumns) || !array_key_exists('uid_foreign', $mmTableColumns)) {
                         continue;
                     }
