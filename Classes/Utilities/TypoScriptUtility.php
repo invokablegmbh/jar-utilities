@@ -50,13 +50,21 @@ class TypoScriptUtility
 		$cachePage = $pageUid ?? BackendUtility::currentPageUid();
 		$hash = $path . '_' . ((int)$cachePage) . '_' . $populated;
 		if (($ts_array = $cache->get('ts', $hash)) === false) {
-			if ($pageUid === null && (($GLOBALS['TYPO3_REQUEST'] ?? null) instanceof ServerRequestInterface
-			&& ApplicationType::fromRequest($GLOBALS['TYPO3_REQUEST'])->isFrontend()
-		)) {
-				$setup = $GLOBALS['TYPO3_REQUEST']->getAttribute('frontend.typoscript')->getSetupArray();
+			if ($pageUid === null
+				&& (($GLOBALS['TYPO3_REQUEST'] ?? null) instanceof ServerRequestInterface)
+				&& ApplicationType::fromRequest($GLOBALS['TYPO3_REQUEST'])->isFrontend()
+			) {
+				$frontendTypoScript = $GLOBALS['TYPO3_REQUEST']->getAttribute('frontend.typoscript');
+
+				if (is_object($frontendTypoScript) && method_exists($frontendTypoScript, 'getSetupArray')) {
+					$setup = $frontendTypoScript->getSetupArray();
+				} else {
+					// Attribut ist (noch) nicht gesetzt – z.B. in früher Middleware
+					$setup = static::loadTypoScript($pageUid);
+				}
 			} else {
-                $setup = static::loadTypoScript($pageUid);
-            }
+				$setup = static::loadTypoScript($pageUid);
+			}
 			$setup = empty($setup) ? [] : $setup;
 			
 			$ts_array = static::convertTypoScriptArrayToPlainArray($setup);
