@@ -588,7 +588,7 @@ class ReflectionService
 										$queryResult = $queryBuilder
 											->select(...$fields)
 											->from($foreignTable)->where($this->createLanguageContraints($queryBuilder, $selectUids, $foreignTable, $currentLanguageUid))->executeQuery();
-										while ($foreignRow = $queryResult->fetch()) {
+										while ($foreignRow = $queryResult->fetchAssociative()) {
 											$sortUid = array_search($foreignRow['uid'], $selectUids);
 											$foreignItems[$sortUid] = &$this->buildArrayByRow($foreignRow, $foreignTable, $maxDepth - 1);
 										}
