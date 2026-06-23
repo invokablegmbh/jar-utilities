@@ -704,11 +704,11 @@ class ReflectionService
 						}
 					}
 
-					unset($this->unloadedRelatedChildren[$languageUid][$table][$foreignField]);
-					if (count($this->unloadedRelatedChildren[$languageUid][$table]) === 0) {
+					unset($this->unloadedRelatedChildren[$languageUid][$table][$foreignField]);					
+					if (empty($this->unloadedRelatedChildren[$languageUid][$table])) {
 						unset($this->unloadedRelatedChildren[$languageUid][$table]);
 					}
-					if (count($this->unloadedRelatedChildren[$languageUid]) === 0) {
+					if (empty($this->unloadedRelatedChildren[$languageUid])) {
 						unset($this->unloadedRelatedChildren[$languageUid]);
 					}
 				}
