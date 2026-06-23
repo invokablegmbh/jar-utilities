@@ -86,9 +86,12 @@ class ReflectionProcessor implements DataProcessorInterface
         // special case: when $processedData has the property "rows" use that instead and handle the whole list (performance boost by nested DataProcessors) 
         $singleRowMode = !array_key_exists('rows', $processedData);
         if($singleRowMode) {
-            $result = reset($reflectionService->buildArrayByRows([$row], $table, $maxDepth));            
+            $result = reset($reflectionService->buildArrayByRows([$row], $table, $maxDepth));
+            if (!is_array($result)) {
+                $result = [];
+            }
         } else {
-            $result = $reflectionService->buildArrayByRows($processedData['rows'] ?? [], $table, $maxDepth);            
+            $result = $reflectionService->buildArrayByRows($processedData['rows'] ?? [], $table, $maxDepth);
         }
 
         // handle nested dataprocessors
