@@ -742,6 +742,7 @@ class ReflectionService
 					// case (f.e. at "sys_category"): the relation uses the default language uid, the row returns the uid used by translation
 					// we remap this on both uids in that language
 					if ($languageUid > 0 && $transOrigPointerField && isset($row[$transOrigPointerField]) && !empty($row[$transOrigPointerField]))  {
+						$rows[$row['uid']] = $row;
 						$row['uid'] = $row[$transOrigPointerField];
 					}
 
